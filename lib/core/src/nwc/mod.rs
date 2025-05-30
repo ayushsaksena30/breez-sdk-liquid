@@ -3,6 +3,8 @@ use urlencoding::encode;
 use hex;
 use anyhow::Result;
 
+mod handler;
+
 pub trait NWCService {
     /// Creates a connection string for Nostr Wallet Connect
     /// 
