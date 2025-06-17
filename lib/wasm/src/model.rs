@@ -311,7 +311,7 @@ pub struct Config {
     pub breez_api_key: Option<String>,
     pub external_input_parsers: Option<Vec<ExternalInputParser>>,
     pub use_default_external_input_parsers: bool,
-    pub onchain_fee_rate_leeway_sat_per_vbyte: Option<u32>,
+    pub onchain_fee_rate_leeway_sat: Option<u64>,
     pub asset_metadata: Option<Vec<AssetMetadata>>,
     pub sideswap_api_key: Option<String>,
 }
@@ -393,6 +393,7 @@ pub struct ReceivePaymentRequest {
     pub prepare_response: PrepareReceiveResponse,
     pub description: Option<String>,
     pub use_description_hash: Option<bool>,
+    pub payer_note: Option<String>,
 }
 
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::ReceivePaymentResponse)]
@@ -434,7 +435,6 @@ pub struct OnchainPaymentLimitsResponse {
 pub struct PrepareSendRequest {
     pub destination: String,
     pub amount: Option<PayAmount>,
-    pub comment: Option<String>,
 }
 
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::SendDestination)]
@@ -451,7 +451,6 @@ pub enum SendDestination {
         offer: LNOffer,
         receiver_amount_sat: u64,
         bip353_address: Option<String>,
-        payer_note: Option<String>,
     },
 }
 
@@ -467,6 +466,7 @@ pub struct PrepareSendResponse {
 pub struct SendPaymentRequest {
     pub prepare_response: PrepareSendResponse,
     pub use_asset_fees: Option<bool>,
+    pub payer_note: Option<String>,
 }
 
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::SendPaymentResponse)]
@@ -699,6 +699,7 @@ pub enum PaymentDetails {
         destination_pubkey: Option<String>,
         lnurl_info: Option<LnUrlInfo>,
         bip353_address: Option<String>,
+        payer_note: Option<String>,
         claim_tx_id: Option<String>,
         refund_tx_id: Option<String>,
         refund_tx_amount_sat: Option<u64>,
@@ -710,6 +711,7 @@ pub enum PaymentDetails {
         asset_info: Option<AssetInfo>,
         lnurl_info: Option<LnUrlInfo>,
         bip353_address: Option<String>,
+        payer_note: Option<String>,
     },
     Bitcoin {
         swap_id: String,

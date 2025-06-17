@@ -270,7 +270,7 @@ fun asBitcoinAddressData(bitcoinAddressData: ReadableMap): BitcoinAddressData? {
 fun readableMapOf(bitcoinAddressData: BitcoinAddressData): ReadableMap =
     readableMapOf(
         "address" to bitcoinAddressData.address,
-        "network" to bitcoinAddressData.network.name.lowercase(),
+        "network" to snakeToLowerCamelCase(bitcoinAddressData.network.name),
         "amountSat" to bitcoinAddressData.amountSat,
         "label" to bitcoinAddressData.label,
         "message" to bitcoinAddressData.message,
@@ -459,13 +459,13 @@ fun asConfig(config: ReadableMap): Config? {
         } else {
             null
         }
-    val onchainFeeRateLeewaySatPerVbyte =
+    val onchainFeeRateLeewaySat =
         if (hasNonNullKey(
                 config,
-                "onchainFeeRateLeewaySatPerVbyte",
+                "onchainFeeRateLeewaySat",
             )
         ) {
-            config.getInt("onchainFeeRateLeewaySatPerVbyte").toUInt()
+            config.getDouble("onchainFeeRateLeewaySat").toULong()
         } else {
             null
         }
@@ -491,7 +491,7 @@ fun asConfig(config: ReadableMap): Config? {
         zeroConfMaxAmountSat,
         useDefaultExternalInputParsers,
         externalInputParsers,
-        onchainFeeRateLeewaySatPerVbyte,
+        onchainFeeRateLeewaySat,
         assetMetadata,
         sideswapApiKey,
     )
@@ -502,14 +502,14 @@ fun readableMapOf(config: Config): ReadableMap =
         "liquidExplorer" to readableMapOf(config.liquidExplorer),
         "bitcoinExplorer" to readableMapOf(config.bitcoinExplorer),
         "workingDir" to config.workingDir,
-        "network" to config.network.name.lowercase(),
+        "network" to snakeToLowerCamelCase(config.network.name),
         "paymentTimeoutSec" to config.paymentTimeoutSec,
         "syncServiceUrl" to config.syncServiceUrl,
         "breezApiKey" to config.breezApiKey,
         "zeroConfMaxAmountSat" to config.zeroConfMaxAmountSat,
         "useDefaultExternalInputParsers" to config.useDefaultExternalInputParsers,
         "externalInputParsers" to config.externalInputParsers?.let { readableArrayOf(it) },
-        "onchainFeeRateLeewaySatPerVbyte" to config.onchainFeeRateLeewaySatPerVbyte,
+        "onchainFeeRateLeewaySat" to config.onchainFeeRateLeewaySat,
         "assetMetadata" to config.assetMetadata?.let { readableArrayOf(it) },
         "sideswapApiKey" to config.sideswapApiKey,
     )
@@ -919,7 +919,7 @@ fun asLnInvoice(lnInvoice: ReadableMap): LnInvoice? {
 fun readableMapOf(lnInvoice: LnInvoice): ReadableMap =
     readableMapOf(
         "bolt11" to lnInvoice.bolt11,
-        "network" to lnInvoice.network.name.lowercase(),
+        "network" to snakeToLowerCamelCase(lnInvoice.network.name),
         "payeePubkey" to lnInvoice.payeePubkey,
         "paymentHash" to lnInvoice.paymentHash,
         "description" to lnInvoice.description,
@@ -1082,7 +1082,7 @@ fun asLiquidAddressData(liquidAddressData: ReadableMap): LiquidAddressData? {
 fun readableMapOf(liquidAddressData: LiquidAddressData): ReadableMap =
     readableMapOf(
         "address" to liquidAddressData.address,
-        "network" to liquidAddressData.network.name.lowercase(),
+        "network" to snakeToLowerCamelCase(liquidAddressData.network.name),
         "assetId" to liquidAddressData.assetId,
         "amount" to liquidAddressData.amount,
         "amountSat" to liquidAddressData.amountSat,
@@ -1847,8 +1847,8 @@ fun readableMapOf(payment: Payment): ReadableMap =
         "timestamp" to payment.timestamp,
         "amountSat" to payment.amountSat,
         "feesSat" to payment.feesSat,
-        "paymentType" to payment.paymentType.name.lowercase(),
-        "status" to payment.status.name.lowercase(),
+        "paymentType" to snakeToLowerCamelCase(payment.paymentType.name),
+        "status" to snakeToLowerCamelCase(payment.status.name),
         "details" to readableMapOf(payment.details),
         "swapperFeesSat" to payment.swapperFeesSat,
         "destination" to payment.destination,
@@ -1885,7 +1885,7 @@ fun asPrepareBuyBitcoinRequest(prepareBuyBitcoinRequest: ReadableMap): PrepareBu
 
 fun readableMapOf(prepareBuyBitcoinRequest: PrepareBuyBitcoinRequest): ReadableMap =
     readableMapOf(
-        "provider" to prepareBuyBitcoinRequest.provider.name.lowercase(),
+        "provider" to snakeToLowerCamelCase(prepareBuyBitcoinRequest.provider.name),
         "amountSat" to prepareBuyBitcoinRequest.amountSat,
     )
 
@@ -1920,7 +1920,7 @@ fun asPrepareBuyBitcoinResponse(prepareBuyBitcoinResponse: ReadableMap): Prepare
 
 fun readableMapOf(prepareBuyBitcoinResponse: PrepareBuyBitcoinResponse): ReadableMap =
     readableMapOf(
-        "provider" to prepareBuyBitcoinResponse.provider.name.lowercase(),
+        "provider" to snakeToLowerCamelCase(prepareBuyBitcoinResponse.provider.name),
         "amountSat" to prepareBuyBitcoinResponse.amountSat,
         "feesSat" to prepareBuyBitcoinResponse.feesSat,
     )
@@ -2144,7 +2144,7 @@ fun asPrepareReceiveRequest(prepareReceiveRequest: ReadableMap): PrepareReceiveR
 
 fun readableMapOf(prepareReceiveRequest: PrepareReceiveRequest): ReadableMap =
     readableMapOf(
-        "paymentMethod" to prepareReceiveRequest.paymentMethod.name.lowercase(),
+        "paymentMethod" to snakeToLowerCamelCase(prepareReceiveRequest.paymentMethod.name),
         "amount" to prepareReceiveRequest.amount?.let { readableMapOf(it) },
     )
 
@@ -2215,7 +2215,7 @@ fun asPrepareReceiveResponse(prepareReceiveResponse: ReadableMap): PrepareReceiv
 
 fun readableMapOf(prepareReceiveResponse: PrepareReceiveResponse): ReadableMap =
     readableMapOf(
-        "paymentMethod" to prepareReceiveResponse.paymentMethod.name.lowercase(),
+        "paymentMethod" to snakeToLowerCamelCase(prepareReceiveResponse.paymentMethod.name),
         "feesSat" to prepareReceiveResponse.feesSat,
         "amount" to prepareReceiveResponse.amount?.let { readableMapOf(it) },
         "minPayerAmountSat" to prepareReceiveResponse.minPayerAmountSat,
@@ -2326,15 +2326,13 @@ fun asPrepareSendRequest(prepareSendRequest: ReadableMap): PrepareSendRequest? {
     }
     val destination = prepareSendRequest.getString("destination")!!
     val amount = if (hasNonNullKey(prepareSendRequest, "amount")) prepareSendRequest.getMap("amount")?.let { asPayAmount(it) } else null
-    val comment = if (hasNonNullKey(prepareSendRequest, "comment")) prepareSendRequest.getString("comment") else null
-    return PrepareSendRequest(destination, amount, comment)
+    return PrepareSendRequest(destination, amount)
 }
 
 fun readableMapOf(prepareSendRequest: PrepareSendRequest): ReadableMap =
     readableMapOf(
         "destination" to prepareSendRequest.destination,
         "amount" to prepareSendRequest.amount?.let { readableMapOf(it) },
-        "comment" to prepareSendRequest.comment,
     )
 
 fun asPrepareSendRequestList(arr: ReadableArray): List<PrepareSendRequest> {
@@ -2448,7 +2446,8 @@ fun asReceivePaymentRequest(receivePaymentRequest: ReadableMap): ReceivePaymentR
         } else {
             null
         }
-    return ReceivePaymentRequest(prepareResponse, description, useDescriptionHash)
+    val payerNote = if (hasNonNullKey(receivePaymentRequest, "payerNote")) receivePaymentRequest.getString("payerNote") else null
+    return ReceivePaymentRequest(prepareResponse, description, useDescriptionHash, payerNote)
 }
 
 fun readableMapOf(receivePaymentRequest: ReceivePaymentRequest): ReadableMap =
@@ -2456,6 +2455,7 @@ fun readableMapOf(receivePaymentRequest: ReceivePaymentRequest): ReadableMap =
         "prepareResponse" to readableMapOf(receivePaymentRequest.prepareResponse),
         "description" to receivePaymentRequest.description,
         "useDescriptionHash" to receivePaymentRequest.useDescriptionHash,
+        "payerNote" to receivePaymentRequest.payerNote,
     )
 
 fun asReceivePaymentRequestList(arr: ReadableArray): List<ReceivePaymentRequest> {
@@ -2769,13 +2769,15 @@ fun asSendPaymentRequest(sendPaymentRequest: ReadableMap): SendPaymentRequest? {
     }
     val prepareResponse = sendPaymentRequest.getMap("prepareResponse")?.let { asPrepareSendResponse(it) }!!
     val useAssetFees = if (hasNonNullKey(sendPaymentRequest, "useAssetFees")) sendPaymentRequest.getBoolean("useAssetFees") else null
-    return SendPaymentRequest(prepareResponse, useAssetFees)
+    val payerNote = if (hasNonNullKey(sendPaymentRequest, "payerNote")) sendPaymentRequest.getString("payerNote") else null
+    return SendPaymentRequest(prepareResponse, useAssetFees, payerNote)
 }
 
 fun readableMapOf(sendPaymentRequest: SendPaymentRequest): ReadableMap =
     readableMapOf(
         "prepareResponse" to readableMapOf(sendPaymentRequest.prepareResponse),
         "useAssetFees" to sendPaymentRequest.useAssetFees,
+        "payerNote" to sendPaymentRequest.payerNote,
     )
 
 fun asSendPaymentRequestList(arr: ReadableArray): List<SendPaymentRequest> {
@@ -3563,6 +3565,7 @@ fun asPaymentDetails(paymentDetails: ReadableMap): PaymentDetails? {
                 null
             }
         val bip353Address = if (hasNonNullKey(paymentDetails, "bip353Address")) paymentDetails.getString("bip353Address") else null
+        val payerNote = if (hasNonNullKey(paymentDetails, "payerNote")) paymentDetails.getString("payerNote") else null
         val claimTxId = if (hasNonNullKey(paymentDetails, "claimTxId")) paymentDetails.getString("claimTxId") else null
         val refundTxId = if (hasNonNullKey(paymentDetails, "refundTxId")) paymentDetails.getString("refundTxId") else null
         val refundTxAmountSat =
@@ -3586,6 +3589,7 @@ fun asPaymentDetails(paymentDetails: ReadableMap): PaymentDetails? {
             destinationPubkey,
             lnurlInfo,
             bip353Address,
+            payerNote,
             claimTxId,
             refundTxId,
             refundTxAmountSat,
@@ -3616,7 +3620,8 @@ fun asPaymentDetails(paymentDetails: ReadableMap): PaymentDetails? {
                 null
             }
         val bip353Address = if (hasNonNullKey(paymentDetails, "bip353Address")) paymentDetails.getString("bip353Address") else null
-        return PaymentDetails.Liquid(assetId, destination, description, assetInfo, lnurlInfo, bip353Address)
+        val payerNote = if (hasNonNullKey(paymentDetails, "payerNote")) paymentDetails.getString("payerNote") else null
+        return PaymentDetails.Liquid(assetId, destination, description, assetInfo, lnurlInfo, bip353Address, payerNote)
     }
     if (type == "bitcoin") {
         val swapId = paymentDetails.getString("swapId")!!
@@ -3687,6 +3692,7 @@ fun readableMapOf(paymentDetails: PaymentDetails): ReadableMap? {
             pushToMap(map, "destinationPubkey", paymentDetails.destinationPubkey)
             pushToMap(map, "lnurlInfo", paymentDetails.lnurlInfo?.let { readableMapOf(it) })
             pushToMap(map, "bip353Address", paymentDetails.bip353Address)
+            pushToMap(map, "payerNote", paymentDetails.payerNote)
             pushToMap(map, "claimTxId", paymentDetails.claimTxId)
             pushToMap(map, "refundTxId", paymentDetails.refundTxId)
             pushToMap(map, "refundTxAmountSat", paymentDetails.refundTxAmountSat)
@@ -3699,6 +3705,7 @@ fun readableMapOf(paymentDetails: PaymentDetails): ReadableMap? {
             pushToMap(map, "assetInfo", paymentDetails.assetInfo?.let { readableMapOf(it) })
             pushToMap(map, "lnurlInfo", paymentDetails.lnurlInfo?.let { readableMapOf(it) })
             pushToMap(map, "bip353Address", paymentDetails.bip353Address)
+            pushToMap(map, "payerNote", paymentDetails.payerNote)
         }
         is PaymentDetails.Bitcoin -> {
             pushToMap(map, "type", "bitcoin")
@@ -3928,8 +3935,7 @@ fun asSendDestination(sendDestination: ReadableMap): SendDestination? {
         val offer = sendDestination.getMap("offer")?.let { asLnOffer(it) }!!
         val receiverAmountSat = sendDestination.getDouble("receiverAmountSat").toULong()
         val bip353Address = if (hasNonNullKey(sendDestination, "bip353Address")) sendDestination.getString("bip353Address") else null
-        val payerNote = if (hasNonNullKey(sendDestination, "payerNote")) sendDestination.getString("payerNote") else null
-        return SendDestination.Bolt12(offer, receiverAmountSat, bip353Address, payerNote)
+        return SendDestination.Bolt12(offer, receiverAmountSat, bip353Address)
     }
     return null
 }
@@ -3952,7 +3958,6 @@ fun readableMapOf(sendDestination: SendDestination): ReadableMap? {
             pushToMap(map, "offer", readableMapOf(sendDestination.offer))
             pushToMap(map, "receiverAmountSat", sendDestination.receiverAmountSat)
             pushToMap(map, "bip353Address", sendDestination.bip353Address)
-            pushToMap(map, "payerNote", sendDestination.payerNote)
         }
     }
     return map
@@ -4103,8 +4108,8 @@ fun pushToArray(
         is LocaleOverrides -> array.pushMap(readableMapOf(value))
         is LocalizedName -> array.pushMap(readableMapOf(value))
         is Payment -> array.pushMap(readableMapOf(value))
-        is PaymentState -> array.pushString(value.name.lowercase())
-        is PaymentType -> array.pushString(value.name.lowercase())
+        is PaymentState -> array.pushString(snakeToLowerCamelCase(value.name))
+        is PaymentType -> array.pushString(snakeToLowerCamelCase(value.name))
         is Rate -> array.pushMap(readableMapOf(value))
         is RefundableSwap -> array.pushMap(readableMapOf(value))
         is RouteHint -> array.pushMap(readableMapOf(value))
@@ -4187,10 +4192,17 @@ fun errUnexpectedType(type: Any?): String {
 
 fun errUnexpectedValue(fieldName: String): String = "Unexpected value for optional field $fieldName"
 
-fun camelToUpperSnakeCase(str: String): String {
-    val pattern = "(?<=.)[A-Z]".toRegex()
-    return str.replace(pattern, "_$0").uppercase()
-}
+fun camelToUpperSnakeCase(str: String): String =
+    "(?<=.)[A-Z]"
+        .toRegex()
+        .replace(str) {
+            "_${it.value}"
+        }.uppercase()
+
+fun snakeToLowerCamelCase(str: String): String =
+    "_[a-zA-Z]".toRegex().replace(str.lowercase()) {
+        it.value.replace("_", "").uppercase()
+    }
 
 internal fun ReadableArray.toList(): List<*> {
     val arrayList = mutableListOf<Any?>()
