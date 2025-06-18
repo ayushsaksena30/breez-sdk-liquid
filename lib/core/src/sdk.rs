@@ -87,7 +87,7 @@ pub const DEFAULT_EXTERNAL_INPUT_PARSERS: &[(&str, &str, &str)] = &[(
     "https://cryptoqr.net/.well-known/lnurlp/<input>",
 )];
 
-pub(crate) const NETWORK_PROPAGATION_GRACE_PERIOD: Duration = Duration::from_secs(60);
+pub(crate) const NETWORK_PROPAGATION_GRACE_PERIOD: Duration = Duration::from_secs(120);
 
 pub struct LiquidSdkBuilder {
     config: Config,
@@ -97,7 +97,7 @@ pub struct LiquidSdkBuilder {
     liquid_chain_service: Option<Arc<dyn LiquidChainService>>,
     onchain_wallet: Option<Arc<dyn OnchainWallet>>,
     payjoin_service: Option<Arc<dyn PayjoinService>>,
-    persister: Option<Arc<Persister>>,
+    persister: Option<std::sync::Arc<Persister>>,
     recoverer: Option<Arc<Recoverer>>,
     rest_client: Option<Arc<dyn RestClient>>,
     status_stream: Option<Arc<dyn SwapperStatusStream>>,
@@ -161,7 +161,7 @@ impl LiquidSdkBuilder {
         self
     }
 
-    pub fn persister(&mut self, persister: Arc<Persister>) -> &mut Self {
+    pub fn persister(&mut self, persister: std::sync::Arc<Persister>) -> &mut Self {
         self.persister = Some(persister.clone());
         self
     }
@@ -198,16 +198,6 @@ impl LiquidSdkBuilder {
             LiquidSdk::validate_breez_api_key(breez_api_key)?
         }
 
-        let fingerprint_hex: String =
-            Xpub::decode(self.signer.xpub()?.as_slice())?.identifier()[0..4].to_hex();
-        let cache_dir = self.config.get_wallet_dir(
-            self.config
-                .cache_dir
-                .as_ref()
-                .unwrap_or(&self.config.working_dir),
-            &fingerprint_hex,
-        )?;
-
         let persister = match self.persister.clone() {
             Some(persister) => persister,
             None => {
@@ -216,7 +206,7 @@ impl LiquidSdkBuilder {
                     "Must provide a Wasm-compatible persister on Wasm builds"
                 ));
                 #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
-                Arc::new(Persister::new_using_fs(
+                std::sync::Arc::new(Persister::new_using_fs(
                     &self.get_working_dir()?,
                     self.config.network,
                     self.config.sync_enabled(),
@@ -247,7 +237,6 @@ impl LiquidSdkBuilder {
             None => Arc::new(
                 LiquidOnchainWallet::new(
                     self.config.clone(),
-                    cache_dir,
                     persister.clone(),
                     self.signer.clone(),
                 )
@@ -292,7 +281,7 @@ impl LiquidSdkBuilder {
                         && self.config.breez_api_key.is_none()
                     {
                         anyhow::bail!(
-                            "Cannot start the Breez real-time sync service without providing a valid API key. See https://sdk-doc-liquid.breez.technology/guide/getting_started.html#api-key",
+                            "Cannot start the Breez real-time sync service without providing an API key. See https://sdk-doc-liquid.breez.technology/guide/getting_started.html#api-key",
                         );
                     }
 
@@ -386,7 +375,7 @@ pub struct LiquidSdk {
     pub(crate) config: Config,
     pub(crate) onchain_wallet: Arc<dyn OnchainWallet>,
     pub(crate) signer: Arc<Box<dyn Signer>>,
-    pub(crate) persister: Arc<Persister>,
+    pub(crate) persister: std::sync::Arc<Persister>,
     pub(crate) rest_client: Arc<dyn RestClient>,
     pub(crate) event_manager: Arc<EventManager>,
     pub(crate) status_stream: Arc<dyn SwapperStatusStream>,
@@ -1219,6 +1208,7 @@ impl LiquidSdk {
     /// # Returns
     /// Returns a [PrepareSendResponse] containing:
     ///     * `destination` - the parsed destination, of type [SendDestination]
+    ///     * `amount` - the optional [PayAmount] to be sent in either Bitcoin or another asset
     ///     * `fees_sat` - the optional estimated fee in satoshi. Is set when there is Bitcoin
     ///        available to pay fees. When not set, there are asset fees available to pay fees.
     ///     * `estimated_asset_fees` - the optional estimated fee in the asset. Is set when
@@ -1399,76 +1389,105 @@ impl LiquidSdk {
                     .map(|(address, _)| address);
                 asset_id = self.config.lbtc_asset_id();
                 estimated_asset_fees = None;
-                (receiver_amount_sat, fees_sat, payment_destination) =
-                    match (mrh_address.clone(), req.amount.clone()) {
-                        (Some(lbtc_address), Some(PayAmount::Drain)) => {
-                            // The BOLT11 invoice has an MRH and it is requested that the wallet balance is to be drained,
-                            // therefore we use the MRH address and drain the balance (overpaying the invoice if neccessary)
-                            let drain_fees_sat = self
-                                .estimate_drain_tx_fee(None, Some(&lbtc_address))
-                                .await?;
-                            let drain_amount_sat =
-                                get_info_res.wallet_info.balance_sat - drain_fees_sat;
-                            let payment_destination = SendDestination::LiquidAddress {
-                                address_data: LiquidAddressData {
-                                    address: lbtc_address,
-                                    asset_id: Some(asset_id.clone()),
-                                    amount: None,
-                                    amount_sat: Some(drain_amount_sat),
-                                    network: self.config.network.into(),
-                                    label: None,
-                                    message: None,
-                                },
-                                bip353_address: None,
-                            };
-                            (drain_amount_sat, Some(drain_fees_sat), payment_destination)
-                        }
-                        (Some(lbtc_address), _) => {
-                            // The BOLT11 invoice has an MRH but no drain is requested,
-                            // so we calculate the fees of a direct Liquid transaction
-                            let fees_sat = self
-                                .estimate_onchain_tx_or_drain_tx_fee(
-                                    invoice_amount_sat,
-                                    &lbtc_address,
-                                    &asset_id,
-                                )
-                                .await?;
-                            (
+                (receiver_amount_sat, fees_sat) = match (mrh_address.clone(), req.amount.clone()) {
+                    (Some(lbtc_address), Some(PayAmount::Drain)) => {
+                        // The BOLT11 invoice has an MRH and it is requested that the
+                        // wallet balance is to be drained, so we calculate the fees of
+                        // a direct Liquid drain transaction
+                        let drain_fees_sat = self
+                            .estimate_drain_tx_fee(None, Some(&lbtc_address))
+                            .await?;
+                        let drain_amount_sat =
+                            get_info_res.wallet_info.balance_sat - drain_fees_sat;
+                        (drain_amount_sat, Some(drain_fees_sat))
+                    }
+                    (Some(lbtc_address), _) => {
+                        // The BOLT11 invoice has an MRH but no drain is requested,
+                        // so we calculate the fees of a direct Liquid transaction
+                        let fees_sat = self
+                            .estimate_onchain_tx_or_drain_tx_fee(
                                 invoice_amount_sat,
-                                Some(fees_sat),
-                                SendDestination::Bolt11 {
-                                    invoice,
-                                    bip353_address: None,
-                                },
+                                &lbtc_address,
+                                &asset_id,
                             )
-                        }
-                        (None, _) => {
-                            // The BOLT11 invoice has no MRH, so we calculate the fees using a swap
-                            let boltz_fees_total = lbtc_pair.fees.total(invoice_amount_sat);
-                            let user_lockup_amount_sat = invoice_amount_sat + boltz_fees_total;
-                            let lockup_fees_sat = self
-                                .estimate_lockup_tx_or_drain_tx_fee(user_lockup_amount_sat)
-                                .await?;
-                            let fees_sat = boltz_fees_total + lockup_fees_sat;
-                            (
-                                invoice_amount_sat,
-                                Some(fees_sat),
-                                SendDestination::Bolt11 {
-                                    invoice,
-                                    bip353_address: None,
-                                },
-                            )
-                        }
-                    };
+                            .await?;
+                        (invoice_amount_sat, Some(fees_sat))
+                    }
+                    (None, _) => {
+                        // The BOLT11 invoice has no MRH, so we calculate the fees using a swap
+                        let boltz_fees_total = lbtc_pair.fees.total(invoice_amount_sat);
+                        let user_lockup_amount_sat = invoice_amount_sat + boltz_fees_total;
+                        let lockup_fees_sat = self
+                            .estimate_lockup_tx_or_drain_tx_fee(user_lockup_amount_sat)
+                            .await?;
+                        let fees_sat = boltz_fees_total + lockup_fees_sat;
+                        (invoice_amount_sat, Some(fees_sat))
+                    }
+                };
+
+                payment_destination = SendDestination::Bolt11 {
+                    invoice,
+                    bip353_address: None,
+                };
             }
             Ok(InputType::Bolt12Offer {
                 offer,
                 bip353_address,
             }) => {
-                receiver_amount_sat = match req.amount {
+                asset_id = self.config.lbtc_asset_id();
+                estimated_asset_fees = None;
+                (receiver_amount_sat, fees_sat) = match req.amount {
+                    Some(PayAmount::Drain) => {
+                        ensure_sdk!(
+                            get_info_res.wallet_info.pending_receive_sat == 0
+                                && get_info_res.wallet_info.pending_send_sat == 0,
+                            PaymentError::Generic {
+                                err: "Cannot drain while there are pending payments".to_string(),
+                            }
+                        );
+                        let lbtc_pair = self
+                            .swapper
+                            .get_submarine_pairs()
+                            .await?
+                            .ok_or(PaymentError::PairsNotFound)?;
+                        let drain_fees_sat = self.estimate_drain_tx_fee(None, None).await?;
+                        let drain_amount_sat =
+                            get_info_res.wallet_info.balance_sat - drain_fees_sat;
+                        // Get the inverse receiver amount by calculating a dummy amount then increment up to the drain amount
+                        let dummy_fees_sat = lbtc_pair.fees.total(drain_amount_sat);
+                        let dummy_amount_sat = drain_amount_sat - dummy_fees_sat;
+                        let receiver_amount_sat =
+                            utils::increment_receiver_amount_up_to_drain_amount(
+                                dummy_amount_sat,
+                                &lbtc_pair,
+                                drain_amount_sat,
+                            );
+                        lbtc_pair.limits.within(receiver_amount_sat)?;
+                        // Validate if we can actually drain the wallet with a swap
+                        let boltz_fees_total = lbtc_pair.fees.total(receiver_amount_sat);
+                        ensure_sdk!(
+                            receiver_amount_sat + boltz_fees_total == drain_amount_sat,
+                            PaymentError::Generic {
+                                err: "Cannot drain without leaving a remainder".to_string(),
+                            }
+                        );
+                        let fees_sat = Some(boltz_fees_total + drain_fees_sat);
+                        info!("Drain amount: {receiver_amount_sat} sat");
+                        Ok((receiver_amount_sat, fees_sat))
+                    }
                     Some(PayAmount::Bitcoin {
-                        receiver_amount_sat: amount_sat,
-                    }) => Ok(amount_sat),
+                        receiver_amount_sat,
+                    }) => {
+                        let lbtc_pair = self.validate_submarine_pairs(receiver_amount_sat).await?;
+                        let boltz_fees_total = lbtc_pair.fees.total(receiver_amount_sat);
+                        let lockup_fees_sat = self
+                            .estimate_lockup_tx_or_drain_tx_fee(
+                                receiver_amount_sat + boltz_fees_total,
+                            )
+                            .await?;
+                        let fees_sat = Some(boltz_fees_total + lockup_fees_sat);
+                        Ok((receiver_amount_sat, fees_sat))
+                    }
                     _ => Err(PaymentError::amount_missing(
                         "Expected PayAmount of type Receiver when processing a Bolt12 offer",
                     )),
@@ -1481,16 +1500,6 @@ impl LiquidSdk {
                         )
                     );
                 }
-
-                let lbtc_pair = self.validate_submarine_pairs(receiver_amount_sat).await?;
-
-                let boltz_fees_total = lbtc_pair.fees.total(receiver_amount_sat);
-                let lockup_fees_sat = self
-                    .estimate_lockup_tx_or_drain_tx_fee(receiver_amount_sat + boltz_fees_total)
-                    .await?;
-                asset_id = self.config.lbtc_asset_id();
-                fees_sat = Some(boltz_fees_total + lockup_fees_sat);
-                estimated_asset_fees = None;
 
                 payment_destination = SendDestination::Bolt12 {
                     offer,
@@ -1514,6 +1523,7 @@ impl LiquidSdk {
             destination: payment_destination,
             fees_sat,
             estimated_asset_fees,
+            amount: req.amount.clone(),
         })
     }
 
@@ -1535,6 +1545,8 @@ impl LiquidSdk {
     ///
     /// * `req` - A [SendPaymentRequest], containing:
     ///     * `prepare_response` - the [PrepareSendResponse] returned by [LiquidSdk::prepare_send_payment]
+    ///     * `use_asset_fees` - if set to true, the payment will be sent using the SideSwap payjoin service
+    ///     * `payer_note` - the optional payer note, which is to be included in a BOLT12 invoice request
     ///
     /// # Errors
     ///
@@ -1548,8 +1560,10 @@ impl LiquidSdk {
         let PrepareSendResponse {
             fees_sat,
             destination: payment_destination,
+            amount,
             ..
         } = &req.prepare_response;
+        let is_drain = matches!(amount, Some(PayAmount::Drain));
 
         match payment_destination {
             SendDestination::LiquidAddress {
@@ -1598,7 +1612,7 @@ impl LiquidSdk {
                         .await?
                 };
 
-                self.insert_bip353_payment_details(bip353_address, &mut response)?;
+                self.insert_payment_details(&None, bip353_address, &mut response)?;
                 Ok(response)
             }
             SendDestination::Bolt11 {
@@ -1606,8 +1620,10 @@ impl LiquidSdk {
                 bip353_address,
             } => {
                 let fees_sat = fees_sat.ok_or(PaymentError::InsufficientFunds)?;
-                let mut response = self.pay_bolt11_invoice(&invoice.bolt11, fees_sat).await?;
-                self.insert_bip353_payment_details(bip353_address, &mut response)?;
+                let mut response = self
+                    .pay_bolt11_invoice(&invoice.bolt11, fees_sat, is_drain)
+                    .await?;
+                self.insert_payment_details(&req.payer_note, bip353_address, &mut response)?;
                 Ok(response)
             }
             SendDestination::Bolt12 {
@@ -1618,23 +1634,34 @@ impl LiquidSdk {
                 let fees_sat = fees_sat.ok_or(PaymentError::InsufficientFunds)?;
                 let bolt12_info = self
                     .swapper
-                    .get_bolt12_info(&offer.offer, *receiver_amount_sat)
+                    .get_bolt12_info(GetBolt12FetchRequest {
+                        offer: offer.offer.clone(),
+                        amount: *receiver_amount_sat,
+                        note: req.payer_note.clone(),
+                    })
                     .await?;
                 let mut response = self
-                    .pay_bolt12_invoice(offer, *receiver_amount_sat, bolt12_info, fees_sat)
+                    .pay_bolt12_invoice(
+                        offer,
+                        *receiver_amount_sat,
+                        bolt12_info,
+                        fees_sat,
+                        is_drain,
+                    )
                     .await?;
-                self.insert_bip353_payment_details(bip353_address, &mut response)?;
+                self.insert_payment_details(&req.payer_note, bip353_address, &mut response)?;
                 Ok(response)
             }
         }
     }
 
-    fn insert_bip353_payment_details(
+    fn insert_payment_details(
         &self,
+        payer_note: &Option<String>,
         bip353_address: &Option<String>,
         response: &mut SendPaymentResponse,
     ) -> Result<()> {
-        if bip353_address.is_some() {
+        if payer_note.is_some() || bip353_address.is_some() {
             if let (Some(tx_id), Some(destination)) =
                 (&response.payment.tx_id, &response.payment.destination)
             {
@@ -1642,10 +1669,9 @@ impl LiquidSdk {
                     .insert_or_update_payment_details(PaymentTxDetails {
                         tx_id: tx_id.clone(),
                         destination: destination.clone(),
-                        description: None,
-                        lnurl_info: None,
                         bip353_address: bip353_address.clone(),
-                        asset_fees: None,
+                        payer_note: payer_note.clone(),
+                        ..Default::default()
                     })?;
                 // Get the payment with the bip353_address details
                 if let Some(payment) = self.persister.get_payment(tx_id)? {
@@ -1660,6 +1686,7 @@ impl LiquidSdk {
         &self,
         invoice: &str,
         fees_sat: u64,
+        is_drain: bool,
     ) -> Result<SendPaymentResponse, PaymentError> {
         self.ensure_send_is_not_self_transfer(invoice)?;
         let bolt11_invoice = self.validate_bolt11_invoice(invoice)?;
@@ -1671,8 +1698,9 @@ impl LiquidSdk {
                 err: "Invoice amount is missing".to_string(),
             })?;
         let payer_amount_sat = amount_sat + fees_sat;
+        let get_info_response = self.get_info().await?;
         ensure_sdk!(
-            payer_amount_sat <= self.get_info().await?.wallet_info.balance_sat,
+            payer_amount_sat <= get_info_response.wallet_info.balance_sat,
             PaymentError::InsufficientFunds
         );
 
@@ -1685,6 +1713,16 @@ impl LiquidSdk {
             // If we find a valid MRH, extract the BIP21 address and pay to it via onchain tx
             Some((address, _)) => {
                 info!("Found MRH for L-BTC address {address}, invoice amount_sat {amount_sat}");
+                let (amount_sat, fees_sat) = if is_drain {
+                    let drain_fees_sat = self.estimate_drain_tx_fee(None, Some(&address)).await?;
+                    let drain_amount_sat =
+                        get_info_response.wallet_info.balance_sat - drain_fees_sat;
+                    info!("Drain amount: {drain_amount_sat} sat");
+                    (drain_amount_sat, drain_fees_sat)
+                } else {
+                    (amount_sat, fees_sat)
+                };
+
                 self.pay_liquid(
                     LiquidAddressData {
                         address,
@@ -1704,14 +1742,14 @@ impl LiquidSdk {
 
             // If no MRH found, perform usual swap
             None => {
-                self.send_payment_via_swap(
-                    invoice,
-                    None,
-                    &bolt11_invoice.payment_hash().to_string(),
+                self.send_payment_via_swap(SendPaymentViaSwapRequest {
+                    invoice: invoice.to_string(),
+                    bolt12_offer: None,
+                    payment_hash: bolt11_invoice.payment_hash().to_string(),
                     description,
-                    amount_sat,
+                    receiver_amount_sat: amount_sat,
                     fees_sat,
-                )
+                })
                 .await
             }
         }
@@ -1723,6 +1761,7 @@ impl LiquidSdk {
         user_specified_receiver_amount_sat: u64,
         bolt12_info: GetBolt12FetchResponse,
         fees_sat: u64,
+        is_drain: bool,
     ) -> Result<SendPaymentResponse, PaymentError> {
         let invoice = self.validate_bolt12_invoice(
             offer,
@@ -1732,8 +1771,9 @@ impl LiquidSdk {
 
         let receiver_amount_sat = invoice.amount_msats() / 1_000;
         let payer_amount_sat = receiver_amount_sat + fees_sat;
+        let get_info_response = self.get_info().await?;
         ensure_sdk!(
-            payer_amount_sat <= self.get_info().await?.wallet_info.balance_sat,
+            payer_amount_sat <= get_info_response.wallet_info.balance_sat,
             PaymentError::InsufficientFunds
         );
 
@@ -1745,6 +1785,15 @@ impl LiquidSdk {
                 );
                 let signing_pubkey = invoice.signing_pubkey().to_string();
                 let (_, address, _, _) = verify_mrh_signature(&bip21, &signing_pubkey, &signature)?;
+                let (receiver_amount_sat, fees_sat) = if is_drain {
+                    let drain_fees_sat = self.estimate_drain_tx_fee(None, Some(&address)).await?;
+                    let drain_amount_sat =
+                        get_info_response.wallet_info.balance_sat - drain_fees_sat;
+                    info!("Drain amount: {drain_amount_sat} sat");
+                    (drain_amount_sat, drain_fees_sat)
+                } else {
+                    (receiver_amount_sat, fees_sat)
+                };
 
                 self.pay_liquid(
                     LiquidAddressData {
@@ -1765,14 +1814,14 @@ impl LiquidSdk {
 
             // If no MRH found, perform usual swap
             None => {
-                self.send_payment_via_swap(
-                    &bolt12_info.invoice,
-                    Some(offer.offer.clone()),
-                    &invoice.payment_hash().to_string(),
-                    invoice.description().map(|desc| desc.to_string()),
+                self.send_payment_via_swap(SendPaymentViaSwapRequest {
+                    invoice: bolt12_info.invoice,
+                    bolt12_offer: Some(offer.offer.clone()),
+                    payment_hash: invoice.payment_hash().to_string(),
+                    description: invoice.description().map(|desc| desc.to_string()),
                     receiver_amount_sat,
                     fees_sat,
-                )
+                })
                 .await
             }
         }
@@ -1864,6 +1913,7 @@ impl LiquidSdk {
             asset_info,
             lnurl_info: None,
             bip353_address: None,
+            payer_note: None,
         };
 
         Ok(SendPaymentResponse {
@@ -1944,6 +1994,7 @@ impl LiquidSdk {
             asset_info,
             lnurl_info: None,
             bip353_address: None,
+            payer_note: None,
         };
 
         Ok(SendPaymentResponse {
@@ -1956,13 +2007,16 @@ impl LiquidSdk {
     /// If `bolt12_offer` is set, `invoice` refers to a Bolt12 invoice, otherwise it's a Bolt11 one.
     async fn send_payment_via_swap(
         &self,
-        invoice: &str,
-        bolt12_offer: Option<String>,
-        payment_hash: &str,
-        description: Option<String>,
-        receiver_amount_sat: u64,
-        fees_sat: u64,
+        req: SendPaymentViaSwapRequest,
     ) -> Result<SendPaymentResponse, PaymentError> {
+        let SendPaymentViaSwapRequest {
+            invoice,
+            bolt12_offer,
+            payment_hash,
+            description,
+            receiver_amount_sat,
+            fees_sat,
+        } = req;
         let lbtc_pair = self.validate_submarine_pairs(receiver_amount_sat).await?;
         let boltz_fees_total = lbtc_pair.fees.total(receiver_amount_sat);
         let user_lockup_amount_sat = receiver_amount_sat + boltz_fees_total;
@@ -1974,7 +2028,7 @@ impl LiquidSdk {
             PaymentError::InvalidOrExpiredFees
         );
 
-        let swap = match self.persister.fetch_send_swap_by_invoice(invoice)? {
+        let swap = match self.persister.fetch_send_swap_by_invoice(&invoice)? {
             Some(swap) => match swap.state {
                 Created => swap,
                 TimedOut => {
@@ -2034,7 +2088,7 @@ impl LiquidSdk {
                 let create_response_json =
                     SendSwap::from_boltz_struct_to_json(&create_response, swap_id)?;
                 let destination_pubkey =
-                    utils::get_invoice_destination_pubkey(invoice, bolt12_offer.is_some())?;
+                    utils::get_invoice_destination_pubkey(&invoice, bolt12_offer.is_some())?;
 
                 let payer_amount_sat = fees_sat + receiver_amount_sat;
                 let swap = SendSwap {
@@ -2593,6 +2647,7 @@ impl LiquidSdk {
     ///     * `prepare_response` - the [PrepareReceiveResponse] from calling [LiquidSdk::prepare_receive_payment]
     ///     * `description` - the optional payment description
     ///     * `use_description_hash` - optional if true uses the hash of the description
+    ///     * `payer_note` - the optional payer note, typically included in a LNURL-Pay request
     ///
     /// # Returns
     ///
@@ -2646,8 +2701,14 @@ impl LiquidSdk {
                         })
                     }
                 };
-                self.create_bolt11_receive_swap(amount_sat, fees_sat, description, description_hash)
-                    .await
+                self.create_bolt11_receive_swap(
+                    amount_sat,
+                    fees_sat,
+                    description,
+                    description_hash,
+                    req.payer_note.clone(),
+                )
+                .await
             }
             PaymentMethod::Bolt12Offer => {
                 let description = req.description.clone().unwrap_or("".to_string());
@@ -2719,6 +2780,7 @@ impl LiquidSdk {
         fees_sat: u64,
         description: Option<String>,
         description_hash: Option<String>,
+        payer_note: Option<String>,
     ) -> Result<ReceivePaymentResponse, PaymentError> {
         let reverse_pair = self
             .swapper
@@ -2832,6 +2894,7 @@ impl LiquidSdk {
                 destination_pubkey: Some(destination_pubkey),
                 timeout_block_height: create_response.timeout_block_height,
                 description: invoice_description,
+                payer_note,
                 payer_amount_sat,
                 receiver_amount_sat,
                 pair_fees_json: serde_json::to_string(&reverse_pair).map_err(|e| {
@@ -2928,14 +2991,13 @@ impl LiquidSdk {
 
         let entropy_source = RandomBytes::new(utils::generate_entropy());
         let nonce = Nonce::from_entropy_source(&entropy_source);
+        let payer_note = invoice_request.payer_note().map(|s| s.to_string());
         let payment_context = PaymentContext::Bolt12Offer(Bolt12OfferContext {
             offer_id: Offer::try_from(bolt12_offer)?.id(),
             invoice_request: InvoiceRequestFields {
                 payer_signing_pubkey: invoice_request.payer_signing_pubkey(),
                 quantity: invoice_request.quantity(),
-                payer_note_truncated: invoice_request
-                    .payer_note()
-                    .map(|s| UntrustedString(s.to_string())),
+                payer_note_truncated: payer_note.clone().map(UntrustedString),
                 human_readable_name: invoice_request.offer_from_hrn().clone(),
             },
         });
@@ -3040,6 +3102,7 @@ impl LiquidSdk {
                 destination_pubkey: Some(destination_pubkey),
                 timeout_block_height: create_response.timeout_block_height,
                 description: invoice_description,
+                payer_note,
                 payer_amount_sat,
                 receiver_amount_sat,
                 pair_fees_json: serde_json::to_string(&reverse_pair).map_err(|e| {
@@ -4020,21 +4083,23 @@ impl LiquidSdk {
     ///
     /// * `req` - the [PrepareLnUrlPayRequest] containing:
     ///     * `data` - the [LnUrlPayRequestData] returned by [LiquidSdk::parse]
-    ///     * `amount` - The optional amount of type [PayAmount].
-    ///        - [PayAmount::Drain] which uses all funds
-    ///        - [PayAmount::Receiver] which sets the amount the receiver should receive
-    ///     * `bip353_address` - A BIP353 address, in case one was used in order to fetch the LNURL
+    ///     * `amount` - the [PayAmount] to send:
+    ///        - [PayAmount::Drain] which uses all Bitcoin funds
+    ///        - [PayAmount::Bitcoin] which sets the amount in satoshi that will be received
+    ///     * `bip353_address` - a BIP353 address, in case one was used in order to fetch the LNURL
     ///       Pay request data. Returned by [parse].
-    ///     * `comment` - an optional comment for this payment
+    ///     * `comment` - an optional comment LUD-12 to be stored with the payment. The comment is included in the
+    ///       invoice request sent to the LNURL endpoint.
     ///     * `validate_success_action_url` - validates that, if there is a URL success action, the URL domain matches
-    ///       the LNURL callback domain. Defaults to 'true'
+    ///       the LNURL callback domain. Defaults to 'true'.
     ///
     /// # Returns
     /// Returns a [PrepareLnUrlPayResponse] containing:
     ///     * `destination` - the destination of the payment
-    ///     * `fees_sat` - The fees in satoshis to send the payment
-    ///     * `data` - The [LnUrlPayRequestData] returned by [parse]
-    ///     * `comment` - An optional comment for this payment
+    ///     * `amount` - the [PayAmount] to send
+    ///     * `fees_sat` - the fees in satoshis to send the payment
+    ///     * `data` - the [LnUrlPayRequestData] returned by [parse]
+    ///     * `comment` - an optional comment for this payment
     ///     * `success_action` - the optional unprocessed LUD-09 success action
     pub async fn prepare_lnurl_pay(
         &self,
@@ -4060,28 +4125,28 @@ impl LiquidSdk {
                     .ok_or(PaymentError::PairsNotFound)?;
                 let drain_fees_sat = self.estimate_drain_tx_fee(None, None).await?;
                 let drain_amount_sat = get_info_res.wallet_info.balance_sat - drain_fees_sat;
-                // Get the inverse invoice amount by calculating a dummy amount then increment up to the drain amount
+                // Get the inverse receiver amount by calculating a dummy amount then increment up to the drain amount
                 let dummy_fees_sat = lbtc_pair.fees.total(drain_amount_sat);
                 let dummy_amount_sat = drain_amount_sat - dummy_fees_sat;
-                let invoice_amount_sat = utils::increment_invoice_amount_up_to_drain_amount(
+                let receiver_amount_sat = utils::increment_receiver_amount_up_to_drain_amount(
                     dummy_amount_sat,
                     &lbtc_pair,
                     drain_amount_sat,
                 );
                 lbtc_pair
                     .limits
-                    .within(invoice_amount_sat)
+                    .within(receiver_amount_sat)
                     .map_err(|e| LnUrlPayError::Generic { err: e.message() })?;
                 // Validate if we can actually drain the wallet with a swap
-                let pair_fees_sat = lbtc_pair.fees.total(invoice_amount_sat);
+                let pair_fees_sat = lbtc_pair.fees.total(receiver_amount_sat);
                 ensure_sdk!(
-                    invoice_amount_sat + pair_fees_sat == drain_amount_sat,
+                    receiver_amount_sat + pair_fees_sat == drain_amount_sat,
                     LnUrlPayError::Generic {
                         err: "Cannot drain without leaving a remainder".to_string(),
                     }
                 );
 
-                invoice_amount_sat * 1000
+                receiver_amount_sat * 1000
             }
             PayAmount::Bitcoin {
                 receiver_amount_sat,
@@ -4110,7 +4175,7 @@ impl LiquidSdk {
                 let prepare_response = self
                     .prepare_send_payment(&PrepareSendRequest {
                         destination: data.pr.clone(),
-                        amount: Some(req.amount),
+                        amount: Some(req.amount.clone()),
                     })
                     .await
                     .map_err(|e| LnUrlPayError::Generic { err: e.to_string() })?;
@@ -4136,6 +4201,7 @@ impl LiquidSdk {
                     destination,
                     fees_sat,
                     data: req.data,
+                    amount: req.amount,
                     comment: req.comment,
                     success_action: data.success_action,
                 })
@@ -4166,8 +4232,10 @@ impl LiquidSdk {
                     destination: prepare_response.destination.clone(),
                     fees_sat: Some(prepare_response.fees_sat),
                     estimated_asset_fees: None,
+                    amount: Some(prepare_response.amount),
                 },
                 use_asset_fees: None,
+                payer_note: prepare_response.comment.clone(),
             })
             .await
             .map_err(|e| LnUrlPayError::Generic { err: e.to_string() })?
@@ -4252,8 +4320,7 @@ impl LiquidSdk {
                         lnurl_pay_unprocessed_success_action: prepare_response.success_action,
                         lnurl_withdraw_endpoint: None,
                     }),
-                    bip353_address: None,
-                    asset_fees: None,
+                    ..Default::default()
                 })?;
             // Get the payment with the lnurl_info details
             payment = self.persister.get_payment(&tx_id)?.unwrap_or(payment);
@@ -4292,6 +4359,7 @@ impl LiquidSdk {
                 prepare_response,
                 description: req.description.clone(),
                 use_description_hash: Some(false),
+                payer_note: None,
             })
             .await?;
 
@@ -4321,8 +4389,7 @@ impl LiquidSdk {
                             lnurl_withdraw_endpoint: Some(req.data.callback),
                             ..Default::default()
                         }),
-                        bip353_address: None,
-                        asset_fees: None,
+                        ..Default::default()
                     })?;
             }
         }
@@ -4554,6 +4621,7 @@ mod tests {
 
     use crate::test_utils::swapper::ZeroAmountSwapMockConfig;
     use crate::test_utils::wallet::TEST_LIQUID_RECEIVE_LOCKUP_TX;
+    use crate::utils;
     use crate::{
         bitcoin, elements,
         model::{BtcHistory, Direction, LBtcHistory, PaymentState, Swap},
@@ -4567,7 +4635,6 @@ mod tests {
             swapper::MockSwapper,
         },
     };
-    use crate::{chain_swap::ESTIMATED_BTC_LOCKUP_TX_VSIZE, utils};
     use crate::{
         model::CreateBolt12InvoiceRequest,
         test_utils::chain_swap::{
@@ -5117,7 +5184,7 @@ mod tests {
             status_stream.clone(),
             liquid_chain_service.clone(),
             bitcoin_chain_service.clone(),
-            None,
+            Some(0),
         )
         .await?;
 
@@ -5165,7 +5232,7 @@ mod tests {
     #[sdk_macros::async_test_all]
     async fn test_zero_amount_chain_swap_with_leeway() -> Result<()> {
         let user_lockup_sat = 50_000;
-        let onchain_fee_rate_leeway_sat_per_vbyte = 5;
+        let onchain_fee_rate_leeway_sat = 500;
 
         create_persister!(persister);
         let swapper = Arc::new(MockSwapper::new());
@@ -5179,24 +5246,18 @@ mod tests {
             status_stream.clone(),
             liquid_chain_service.clone(),
             bitcoin_chain_service.clone(),
-            Some(onchain_fee_rate_leeway_sat_per_vbyte),
+            Some(onchain_fee_rate_leeway_sat),
         )
         .await?;
 
         LiquidSdk::track_swap_updates(&sdk);
-
-        let max_fee_increase_for_auto_accept_sat =
-            onchain_fee_rate_leeway_sat_per_vbyte as u64 * ESTIMATED_BTC_LOCKUP_TX_VSIZE;
 
         // We spawn a new thread since updates can only be sent when called via async runtimes
         tokio::spawn(async move {
             // Verify that `TransactionLockupFailed` correctly:
             // 1. does not affect state when swapper increases fee by up to sat/vbyte leeway * tx size
             // 2. triggers a change to WaitingFeeAcceptance when it is any higher
-            for fee_increase in [
-                max_fee_increase_for_auto_accept_sat,
-                max_fee_increase_for_auto_accept_sat + 1,
-            ] {
+            for fee_increase in [onchain_fee_rate_leeway_sat, onchain_fee_rate_leeway_sat + 1] {
                 swapper.set_zero_amount_swap_mock_config(ZeroAmountSwapMockConfig {
                     user_lockup_sat,
                     onchain_fee_increase_sat: fee_increase,
@@ -5215,10 +5276,10 @@ mod tests {
                     None
                 );
                 match fee_increase {
-                    val if val == max_fee_increase_for_auto_accept_sat => {
+                    val if val == onchain_fee_rate_leeway_sat => {
                         assert_eq!(persisted_swap.state, PaymentState::Created);
                     }
-                    val if val == (max_fee_increase_for_auto_accept_sat + 1) => {
+                    val if val == (onchain_fee_rate_leeway_sat + 1) => {
                         assert_eq!(persisted_swap.state, PaymentState::WaitingFeeAcceptance);
                     }
                     _ => panic!("Unexpected fee_increase"),

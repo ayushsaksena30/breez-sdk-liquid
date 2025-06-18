@@ -340,11 +340,10 @@ dictionary Config {
     u64 payment_timeout_sec;
     string? sync_service_url;
     string? breez_api_key;
-    string? cache_dir;
     u64? zero_conf_max_amount_sat;
     boolean use_default_external_input_parsers = true;
     sequence<ExternalInputParser>? external_input_parsers = null;
-    u32? onchain_fee_rate_leeway_sat_per_vbyte = null;
+    u64? onchain_fee_rate_leeway_sat = null;
     sequence<AssetMetadata>? asset_metadata = null;
     string? sideswap_api_key = null;
 };
@@ -356,14 +355,14 @@ enum LiquidNetwork {
 };
 
 dictionary ConnectRequest {
-    Config config;    
+    Config config;
     string? mnemonic = null;
     string? passphrase = null;
     sequence<u8>? seed = null;
 };
 
 dictionary ConnectWithSignerRequest {
-  Config config;  
+  Config config;
 };
 
 dictionary AssetBalance {
@@ -423,6 +422,7 @@ dictionary PrepareLnUrlPayResponse {
     SendDestination destination;
     u64 fees_sat;
     LnUrlPayRequestData data;
+    PayAmount amount;
     string? comment = null;
     SuccessAction? success_action = null;
 };
@@ -445,6 +445,7 @@ interface SendDestination {
 
 dictionary PrepareSendResponse {
     SendDestination destination;
+    PayAmount? amount;
     u64? fees_sat;
     f64? estimated_asset_fees;
 };
@@ -452,6 +453,7 @@ dictionary PrepareSendResponse {
 dictionary SendPaymentRequest {
     PrepareSendResponse prepare_response;
     boolean? use_asset_fees = null;
+    string? payer_note = null;
 };
 
 dictionary SendPaymentResponse {
@@ -490,6 +492,7 @@ dictionary ReceivePaymentRequest {
     PrepareReceiveResponse prepare_response;
     string? description = null;
     boolean? use_description_hash = null;
+    string? payer_note = null;
 };
 
 dictionary ReceivePaymentResponse {
@@ -629,9 +632,9 @@ dictionary AssetInfo {
 
 [Enum]
 interface PaymentDetails {
-    Lightning(string swap_id, string description, u32 liquid_expiration_blockheight, string? preimage, string? invoice, string? bolt12_offer, string? payment_hash, string? destination_pubkey, LnUrlInfo? lnurl_info, string? bip353_address, string? claim_tx_id, string? refund_tx_id, u64? refund_tx_amount_sat);
-    Liquid(string asset_id, string destination, string description, AssetInfo? asset_info, LnUrlInfo? lnurl_info, string? bip353_address);
-    Bitcoin(string swap_id, string description, boolean auto_accepted_fees, u32? bitcoin_expiration_blockheight, u32? liquid_expiration_blockheight, string? lockup_tx_id, string? claim_tx_id, string? refund_tx_id, u64? refund_tx_amount_sat);
+    Lightning(string swap_id, string description, u32 liquid_expiration_blockheight, string? preimage, string? invoice, string? bolt12_offer, string? payment_hash, string? destination_pubkey, LnUrlInfo? lnurl_info, string? bip353_address, string? payer_note, string? claim_tx_id, string? refund_tx_id, u64? refund_tx_amount_sat);
+    Liquid(string asset_id, string destination, string description, AssetInfo? asset_info, LnUrlInfo? lnurl_info, string? bip353_address, string? payer_note);
+    Bitcoin(string swap_id, string bitcoin_address, string description, boolean auto_accepted_fees, u32? bitcoin_expiration_blockheight, u32? liquid_expiration_blockheight, string? lockup_tx_id, string? claim_tx_id, string? refund_tx_id, u64? refund_tx_amount_sat);
 };
 
 dictionary Payment {
@@ -714,7 +717,7 @@ interface SdkEvent {
     DataSynced(boolean did_pull_new_records);
 };
 
-callback interface EventListener {    
+callback interface EventListener {
     void on_event(SdkEvent e);
 };
 
@@ -750,7 +753,7 @@ namespace breez_sdk_liquid {
 
     [Throws=SdkError]
     void set_logger(Logger logger);
-    
+
     [Throws=SdkError]
     Config default_config(LiquidNetwork network, string? breez_api_key);
 
@@ -759,7 +762,7 @@ namespace breez_sdk_liquid {
 };
 
 [Error]
-interface SignerError { 
+interface SignerError {
     Generic(string err);
 };
 

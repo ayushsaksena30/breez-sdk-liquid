@@ -259,9 +259,6 @@ class Config {
   ///
   /// Prefix can be a relative or absolute path to this directory.
   final String workingDir;
-
-  /// Directory in which the Liquid wallet cache is stored. Defaults to `working_dir`
-  final String? cacheDir;
   final LiquidNetwork network;
 
   /// Send payment timeout. See [LiquidSdk::send_payment](crate::sdk::LiquidSdk::send_payment)
@@ -289,12 +286,12 @@ class Config {
   final bool useDefaultExternalInputParsers;
 
   /// For payments where the onchain fees can only be estimated on creation, this can be used
-  /// in order to automatically allow slightly more expensive fees. If the actual fee rate ends up
+  /// in order to automatically allow slightly more expensive fees. If the actual fee ends up
   /// being above the sum of the initial estimate and this leeway, the payment will require
   /// user fee acceptance. See [WaitingFeeAcceptance](PaymentState::WaitingFeeAcceptance).
   ///
-  /// Defaults to zero.
-  final int? onchainFeeRateLeewaySatPerVbyte;
+  /// Defaults to [DEFAULT_ONCHAIN_FEE_RATE_LEEWAY_SAT].
+  final BigInt? onchainFeeRateLeewaySat;
 
   /// A set of asset metadata used by [LiquidSdk::parse](crate::sdk::LiquidSdk::parse) when the input is a
   /// [LiquidAddressData] and the [asset_id](LiquidAddressData::asset_id) differs from the Liquid Bitcoin asset.
@@ -309,7 +306,6 @@ class Config {
     required this.liquidExplorer,
     required this.bitcoinExplorer,
     required this.workingDir,
-    this.cacheDir,
     required this.network,
     required this.paymentTimeoutSec,
     this.syncServiceUrl,
@@ -317,7 +313,7 @@ class Config {
     this.breezApiKey,
     this.externalInputParsers,
     required this.useDefaultExternalInputParsers,
-    this.onchainFeeRateLeewaySatPerVbyte,
+    this.onchainFeeRateLeewaySat,
     this.assetMetadata,
     this.sideswapApiKey,
   });
@@ -327,7 +323,6 @@ class Config {
       liquidExplorer.hashCode ^
       bitcoinExplorer.hashCode ^
       workingDir.hashCode ^
-      cacheDir.hashCode ^
       network.hashCode ^
       paymentTimeoutSec.hashCode ^
       syncServiceUrl.hashCode ^
@@ -335,7 +330,7 @@ class Config {
       breezApiKey.hashCode ^
       externalInputParsers.hashCode ^
       useDefaultExternalInputParsers.hashCode ^
-      onchainFeeRateLeewaySatPerVbyte.hashCode ^
+      onchainFeeRateLeewaySat.hashCode ^
       assetMetadata.hashCode ^
       sideswapApiKey.hashCode;
 
@@ -347,7 +342,6 @@ class Config {
           liquidExplorer == other.liquidExplorer &&
           bitcoinExplorer == other.bitcoinExplorer &&
           workingDir == other.workingDir &&
-          cacheDir == other.cacheDir &&
           network == other.network &&
           paymentTimeoutSec == other.paymentTimeoutSec &&
           syncServiceUrl == other.syncServiceUrl &&
@@ -355,7 +349,7 @@ class Config {
           breezApiKey == other.breezApiKey &&
           externalInputParsers == other.externalInputParsers &&
           useDefaultExternalInputParsers == other.useDefaultExternalInputParsers &&
-          onchainFeeRateLeewaySatPerVbyte == other.onchainFeeRateLeewaySatPerVbyte &&
+          onchainFeeRateLeewaySat == other.onchainFeeRateLeewaySat &&
           assetMetadata == other.assetMetadata &&
           sideswapApiKey == other.sideswapApiKey;
 }
@@ -939,6 +933,9 @@ sealed class PaymentDetails with _$PaymentDetails {
     /// The BIP353 address used to resolve this payment
     String? bip353Address,
 
+    /// The payer note
+    String? payerNote,
+
     /// For a Receive payment, this is the claim tx id in case it has already been broadcast
     String? claimTxId,
 
@@ -968,11 +965,17 @@ sealed class PaymentDetails with _$PaymentDetails {
 
     /// The BIP353 address used to resolve this payment
     String? bip353Address,
+
+    /// The payer note
+    String? payerNote,
   }) = PaymentDetails_Liquid;
 
   /// Swapping to or from the Bitcoin chain
   const factory PaymentDetails.bitcoin({
     required String swapId,
+
+    /// The Bitcoin address that receives funds.
+    required String bitcoinAddress,
 
     /// Represents the invoice description
     required String description,
@@ -1141,7 +1144,8 @@ class PrepareLnUrlPayRequest {
   /// Returned by [parse].
   final String? bip353Address;
 
-  /// An optional comment for this payment
+  /// An optional comment LUD-12 to be stored with the payment. The comment is included in the
+  /// invoice request sent to the LNURL endpoint.
   final String? comment;
 
   /// Validates that, if there is a URL success action, the URL domain matches
@@ -1187,7 +1191,11 @@ class PrepareLnUrlPayResponse {
   /// The [LnUrlPayRequestData] returned by [parse]
   final LnUrlPayRequestData data;
 
-  /// An optional comment for this payment
+  /// The amount to send
+  final PayAmount amount;
+
+  /// An optional comment LUD-12 to be stored with the payment. The comment is included in the
+  /// invoice request sent to the LNURL endpoint.
   final String? comment;
 
   /// The unprocessed LUD-09 success action. This will be processed and decrypted if
@@ -1198,13 +1206,19 @@ class PrepareLnUrlPayResponse {
     required this.destination,
     required this.feesSat,
     required this.data,
+    required this.amount,
     this.comment,
     this.successAction,
   });
 
   @override
   int get hashCode =>
-      destination.hashCode ^ feesSat.hashCode ^ data.hashCode ^ comment.hashCode ^ successAction.hashCode;
+      destination.hashCode ^
+      feesSat.hashCode ^
+      data.hashCode ^
+      amount.hashCode ^
+      comment.hashCode ^
+      successAction.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -1214,6 +1228,7 @@ class PrepareLnUrlPayResponse {
           destination == other.destination &&
           feesSat == other.feesSat &&
           data == other.data &&
+          amount == other.amount &&
           comment == other.comment &&
           successAction == other.successAction;
 }
@@ -1430,6 +1445,9 @@ class PrepareSendRequest {
 class PrepareSendResponse {
   final SendDestination destination;
 
+  /// The optional amount to be sent in either Bitcoin or another asset
+  final PayAmount? amount;
+
   /// The optional estimated fee in satoshi. Is set when there is Bitcoin available
   /// to pay fees. When not set, there are asset fees available to pay fees.
   final BigInt? feesSat;
@@ -1439,10 +1457,10 @@ class PrepareSendResponse {
   /// are funds available in this asset to pay fees.
   final double? estimatedAssetFees;
 
-  const PrepareSendResponse({required this.destination, this.feesSat, this.estimatedAssetFees});
+  const PrepareSendResponse({required this.destination, this.amount, this.feesSat, this.estimatedAssetFees});
 
   @override
-  int get hashCode => destination.hashCode ^ feesSat.hashCode ^ estimatedAssetFees.hashCode;
+  int get hashCode => destination.hashCode ^ amount.hashCode ^ feesSat.hashCode ^ estimatedAssetFees.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -1450,6 +1468,7 @@ class PrepareSendResponse {
       other is PrepareSendResponse &&
           runtimeType == other.runtimeType &&
           destination == other.destination &&
+          amount == other.amount &&
           feesSat == other.feesSat &&
           estimatedAssetFees == other.estimatedAssetFees;
 }
@@ -1469,16 +1488,25 @@ sealed class ReceiveAmount with _$ReceiveAmount {
 class ReceivePaymentRequest {
   final PrepareReceiveResponse prepareResponse;
 
-  /// The description for this payment request.
+  /// The description for this payment request
   final String? description;
 
-  /// If set to true, then the hash of the description will be used.
+  /// If set to true, then the hash of the description will be used
   final bool? useDescriptionHash;
 
-  const ReceivePaymentRequest({required this.prepareResponse, this.description, this.useDescriptionHash});
+  /// An optional payer note, typically included in a LNURL-Pay request
+  final String? payerNote;
+
+  const ReceivePaymentRequest({
+    required this.prepareResponse,
+    this.description,
+    this.useDescriptionHash,
+    this.payerNote,
+  });
 
   @override
-  int get hashCode => prepareResponse.hashCode ^ description.hashCode ^ useDescriptionHash.hashCode;
+  int get hashCode =>
+      prepareResponse.hashCode ^ description.hashCode ^ useDescriptionHash.hashCode ^ payerNote.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -1487,7 +1515,8 @@ class ReceivePaymentRequest {
           runtimeType == other.runtimeType &&
           prepareResponse == other.prepareResponse &&
           description == other.description &&
-          useDescriptionHash == other.useDescriptionHash;
+          useDescriptionHash == other.useDescriptionHash &&
+          payerNote == other.payerNote;
 }
 
 /// Returned when calling [crate::sdk::LiquidSdk::receive_payment].
@@ -1689,12 +1718,17 @@ sealed class SendDestination with _$SendDestination {
 /// An argument when calling [crate::sdk::LiquidSdk::send_payment].
 class SendPaymentRequest {
   final PrepareSendResponse prepareResponse;
+
+  /// If set to true, the payment will be sent using the SideSwap payjoin service
   final bool? useAssetFees;
 
-  const SendPaymentRequest({required this.prepareResponse, this.useAssetFees});
+  /// An optional payer note, which is to be included in a BOLT12 invoice request
+  final String? payerNote;
+
+  const SendPaymentRequest({required this.prepareResponse, this.useAssetFees, this.payerNote});
 
   @override
-  int get hashCode => prepareResponse.hashCode ^ useAssetFees.hashCode;
+  int get hashCode => prepareResponse.hashCode ^ useAssetFees.hashCode ^ payerNote.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -1702,7 +1736,8 @@ class SendPaymentRequest {
       other is SendPaymentRequest &&
           runtimeType == other.runtimeType &&
           prepareResponse == other.prepareResponse &&
-          useAssetFees == other.useAssetFees;
+          useAssetFees == other.useAssetFees &&
+          payerNote == other.payerNote;
 }
 
 /// Returned when calling [crate::sdk::LiquidSdk::send_payment].

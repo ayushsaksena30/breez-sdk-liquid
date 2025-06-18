@@ -18,7 +18,7 @@ use super::{
 };
 
 pub(crate) async fn new_liquid_sdk(
-    persister: Arc<Persister>,
+    persister: std::sync::Arc<Persister>,
     swapper: Arc<MockSwapper>,
     status_stream: Arc<MockStatusStream>,
 ) -> Result<Arc<LiquidSdk>> {
@@ -37,12 +37,12 @@ pub(crate) async fn new_liquid_sdk(
 }
 
 pub(crate) async fn new_liquid_sdk_with_chain_services(
-    persister: Arc<Persister>,
+    persister: std::sync::Arc<Persister>,
     swapper: Arc<MockSwapper>,
     status_stream: Arc<MockStatusStream>,
     liquid_chain_service: Arc<MockLiquidChainService>,
     bitcoin_chain_service: Arc<MockBitcoinChainService>,
-    onchain_fee_rate_leeway_sat_per_vbyte: Option<u32>,
+    onchain_fee_rate_leeway_sat: Option<u64>,
 ) -> Result<Arc<LiquidSdk>> {
     let mut config = Config::testnet_esplora(None);
     config.working_dir = persister
@@ -50,7 +50,7 @@ pub(crate) async fn new_liquid_sdk_with_chain_services(
         .to_str()
         .ok_or(anyhow!("An invalid SDK directory was specified"))?
         .to_string();
-    config.onchain_fee_rate_leeway_sat_per_vbyte = onchain_fee_rate_leeway_sat_per_vbyte;
+    config.onchain_fee_rate_leeway_sat = onchain_fee_rate_leeway_sat;
 
     let signer: Arc<Box<dyn Signer>> = Arc::new(Box::new(MockSigner::new()?));
     let rest_client: Arc<dyn RestClient> = Arc::new(MockRestClient::new());

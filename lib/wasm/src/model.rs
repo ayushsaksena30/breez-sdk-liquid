@@ -304,7 +304,6 @@ pub struct Config {
     pub liquid_explorer: BlockchainExplorer,
     pub bitcoin_explorer: BlockchainExplorer,
     pub working_dir: String,
-    pub cache_dir: Option<String>,
     pub network: LiquidNetwork,
     pub payment_timeout_sec: u64,
     pub sync_service_url: Option<String>,
@@ -312,7 +311,7 @@ pub struct Config {
     pub breez_api_key: Option<String>,
     pub external_input_parsers: Option<Vec<ExternalInputParser>>,
     pub use_default_external_input_parsers: bool,
-    pub onchain_fee_rate_leeway_sat_per_vbyte: Option<u32>,
+    pub onchain_fee_rate_leeway_sat: Option<u64>,
     pub asset_metadata: Option<Vec<AssetMetadata>>,
     pub sideswap_api_key: Option<String>,
 }
@@ -394,6 +393,7 @@ pub struct ReceivePaymentRequest {
     pub prepare_response: PrepareReceiveResponse,
     pub description: Option<String>,
     pub use_description_hash: Option<bool>,
+    pub payer_note: Option<String>,
 }
 
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::ReceivePaymentResponse)]
@@ -457,6 +457,7 @@ pub enum SendDestination {
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::PrepareSendResponse)]
 pub struct PrepareSendResponse {
     pub destination: SendDestination,
+    pub amount: Option<PayAmount>,
     pub fees_sat: Option<u64>,
     pub estimated_asset_fees: Option<f64>,
 }
@@ -465,6 +466,7 @@ pub struct PrepareSendResponse {
 pub struct SendPaymentRequest {
     pub prepare_response: PrepareSendResponse,
     pub use_asset_fees: Option<bool>,
+    pub payer_note: Option<String>,
 }
 
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::SendPaymentResponse)]
@@ -697,6 +699,7 @@ pub enum PaymentDetails {
         destination_pubkey: Option<String>,
         lnurl_info: Option<LnUrlInfo>,
         bip353_address: Option<String>,
+        payer_note: Option<String>,
         claim_tx_id: Option<String>,
         refund_tx_id: Option<String>,
         refund_tx_amount_sat: Option<u64>,
@@ -708,9 +711,11 @@ pub enum PaymentDetails {
         asset_info: Option<AssetInfo>,
         lnurl_info: Option<LnUrlInfo>,
         bip353_address: Option<String>,
+        payer_note: Option<String>,
     },
     Bitcoin {
         swap_id: String,
+        bitcoin_address: String,
         description: String,
         auto_accepted_fees: bool,
         liquid_expiration_blockheight: Option<u32>,
@@ -789,6 +794,7 @@ pub struct PrepareLnUrlPayResponse {
     pub destination: SendDestination,
     pub fees_sat: u64,
     pub data: LnUrlPayRequestData,
+    pub amount: PayAmount,
     pub comment: Option<String>,
     pub success_action: Option<SuccessAction>,
 }

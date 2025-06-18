@@ -9,6 +9,7 @@ pub(crate) mod model;
 pub(crate) mod receive;
 pub(crate) mod send;
 pub(crate) mod sync;
+pub(crate) mod wallet_updates;
 
 use std::collections::{HashMap, HashSet};
 use std::ops::Not;
@@ -227,11 +228,17 @@ impl Persister {
                 return Ok(());
             }
         };
-        let maybe_script_pubkey = tx
+        let maybe_address = tx
             .outputs
             .iter()
             .find(|output| output.is_some())
-            .and_then(|output| output.clone().map(|o| o.script_pubkey.to_hex()));
+            .and_then(|output| {
+                output.clone().and_then(|o| {
+                    o.address.blinding_pubkey.map(|blinding_pubkey| {
+                        o.address.to_confidential(blinding_pubkey).to_string()
+                    })
+                })
+            });
         let unblinding_data = tx
             .unblinded_url("")
             .replace(&format!("tx/{}#blinded=", tx_id), "");
@@ -246,7 +253,7 @@ impl Persister {
                 is_confirmed: is_tx_confirmed,
                 unblinding_data: Some(unblinding_data),
             },
-            maybe_script_pubkey.map(|destination| PaymentTxDetails {
+            maybe_address.map(|destination| PaymentTxDetails {
                 tx_id,
                 destination,
                 ..Default::default()
@@ -382,15 +389,17 @@ impl Persister {
                     description,
                     lnurl_info_json,
                     bip353_address,
+                    payer_note,
                     asset_fees
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (tx_id)
                 DO UPDATE SET
                     {destination_update}
                     description = COALESCE(excluded.description, description),
                     lnurl_info_json = COALESCE(excluded.lnurl_info_json, lnurl_info_json),
                     bip353_address = COALESCE(excluded.bip353_address, bip353_address),
+                    payer_note = COALESCE(excluded.payer_note, payer_note),
                     asset_fees = COALESCE(excluded.asset_fees, asset_fees)
             "
             ),
@@ -403,6 +412,7 @@ impl Persister {
                     .as_ref()
                     .map(|info| serde_json::to_string(&info).ok()),
                 &payment_tx_details.bip353_address,
+                &payment_tx_details.payer_note,
                 &payment_tx_details.asset_fees,
             ),
         )?;
@@ -432,7 +442,7 @@ impl Persister {
     pub(crate) fn get_payment_details(&self, tx_id: &str) -> Result<Option<PaymentTxDetails>> {
         let con = self.get_connection()?;
         let mut stmt = con.prepare(
-            "SELECT destination, description, lnurl_info_json, bip353_address, asset_fees
+            "SELECT destination, description, lnurl_info_json, bip353_address, payer_note, asset_fees
             FROM payment_details
             WHERE tx_id = ?",
         )?;
@@ -441,7 +451,8 @@ impl Persister {
             let description = row.get(1)?;
             let maybe_lnurl_info_json: Option<String> = row.get(2)?;
             let maybe_bip353_address = row.get(3)?;
-            let maybe_asset_fees = row.get(4)?;
+            let maybe_payer_note = row.get(4)?;
+            let maybe_asset_fees = row.get(5)?;
             Ok(PaymentTxDetails {
                 tx_id: tx_id.to_string(),
                 destination,
@@ -449,6 +460,7 @@ impl Persister {
                 lnurl_info: maybe_lnurl_info_json
                     .and_then(|info| serde_json::from_str::<LnUrlInfo>(&info).ok()),
                 bip353_address: maybe_bip353_address,
+                payer_note: maybe_payer_note,
                 asset_fees: maybe_asset_fees,
             })
         });
@@ -462,7 +474,7 @@ impl Persister {
             .map(Swap::Send)
             .collect();
         let ongoing_receive_swaps: Vec<Swap> = self
-            .list_ongoing_receive_swaps(None)?
+            .list_ongoing_receive_swaps()?
             .into_iter()
             .map(Swap::Receive)
             .collect();
@@ -519,6 +531,7 @@ impl Persister {
                 rs.payment_hash,
                 rs.destination_pubkey,
                 rs.description,
+                rs.payer_note,
                 rs.preimage,
                 rs.payer_amount_sat,
                 rs.receiver_amount_sat,
@@ -549,6 +562,7 @@ impl Persister {
                 cs.payer_amount_sat,
                 cs.receiver_amount_sat,
                 cs.claim_address,
+                cs.lockup_address,
                 cs.state,
                 cs.pair_fees_json,
                 cs.actual_payer_amount_sat,
@@ -561,6 +575,7 @@ impl Persister {
                 pd.description,
                 pd.lnurl_info_json,
                 pd.bip353_address,
+                pd.payer_note,
                 pd.asset_fees,
                 am.name,
                 am.ticker,
@@ -628,65 +643,74 @@ impl Persister {
         let maybe_receive_swap_payment_hash: Option<String> = row.get(13)?;
         let maybe_receive_swap_destination_pubkey: Option<String> = row.get(14)?;
         let maybe_receive_swap_description: Option<String> = row.get(15)?;
-        let maybe_receive_swap_preimage: Option<String> = row.get(16)?;
-        let maybe_receive_swap_payer_amount_sat: Option<u64> = row.get(17)?;
-        let maybe_receive_swap_receiver_amount_sat: Option<u64> = row.get(18)?;
-        let maybe_receive_swap_receiver_state: Option<PaymentState> = row.get(19)?;
-        let maybe_receive_swap_pair_fees_json: Option<String> = row.get(20)?;
+        let maybe_receive_swap_payer_note: Option<String> = row.get(16)?;
+        let maybe_receive_swap_preimage: Option<String> = row.get(17)?;
+        let maybe_receive_swap_payer_amount_sat: Option<u64> = row.get(18)?;
+        let maybe_receive_swap_receiver_amount_sat: Option<u64> = row.get(19)?;
+        let maybe_receive_swap_receiver_state: Option<PaymentState> = row.get(20)?;
+        let maybe_receive_swap_pair_fees_json: Option<String> = row.get(21)?;
         let maybe_receive_swap_pair_fees: Option<ReversePair> =
             maybe_receive_swap_pair_fees_json.and_then(|pair| serde_json::from_str(&pair).ok());
-        let maybe_receive_swap_claim_tx_id: Option<String> = row.get(21)?;
+        let maybe_receive_swap_claim_tx_id: Option<String> = row.get(22)?;
 
-        let maybe_send_swap_id: Option<String> = row.get(22)?;
-        let maybe_send_swap_created_at: Option<u32> = row.get(23)?;
-        let maybe_send_swap_timeout_block_height: Option<u32> = row.get(24)?;
-        let maybe_send_swap_invoice: Option<String> = row.get(25)?;
-        let maybe_send_swap_bolt12_offer: Option<String> = row.get(26)?;
-        let maybe_send_swap_payment_hash: Option<String> = row.get(27)?;
-        let maybe_send_swap_destination_pubkey: Option<String> = row.get(28)?;
-        let maybe_send_swap_description: Option<String> = row.get(29)?;
-        let maybe_send_swap_preimage: Option<String> = row.get(30)?;
-        let maybe_send_swap_refund_tx_id: Option<String> = row.get(31)?;
-        let maybe_send_swap_payer_amount_sat: Option<u64> = row.get(32)?;
-        let maybe_send_swap_receiver_amount_sat: Option<u64> = row.get(33)?;
-        let maybe_send_swap_state: Option<PaymentState> = row.get(34)?;
-        let maybe_send_swap_pair_fees_json: Option<String> = row.get(35)?;
+        let maybe_send_swap_id: Option<String> = row.get(23)?;
+        let maybe_send_swap_created_at: Option<u32> = row.get(24)?;
+        let maybe_send_swap_timeout_block_height: Option<u32> = row.get(25)?;
+        let maybe_send_swap_invoice: Option<String> = row.get(26)?;
+        let maybe_send_swap_bolt12_offer: Option<String> = row.get(27)?;
+        let maybe_send_swap_payment_hash: Option<String> = row.get(28)?;
+        let maybe_send_swap_destination_pubkey: Option<String> = row.get(29)?;
+        let maybe_send_swap_description: Option<String> = row.get(30)?;
+        let maybe_send_swap_preimage: Option<String> = row.get(31)?;
+        let maybe_send_swap_refund_tx_id: Option<String> = row.get(32)?;
+        let maybe_send_swap_payer_amount_sat: Option<u64> = row.get(33)?;
+        let maybe_send_swap_receiver_amount_sat: Option<u64> = row.get(34)?;
+        let maybe_send_swap_state: Option<PaymentState> = row.get(35)?;
+        let maybe_send_swap_pair_fees_json: Option<String> = row.get(36)?;
         let maybe_send_swap_pair_fees: Option<SubmarinePair> =
             maybe_send_swap_pair_fees_json.and_then(|pair| serde_json::from_str(&pair).ok());
 
-        let maybe_chain_swap_id: Option<String> = row.get(36)?;
-        let maybe_chain_swap_created_at: Option<u32> = row.get(37)?;
-        let maybe_chain_swap_timeout_block_height: Option<u32> = row.get(38)?;
-        let maybe_chain_swap_direction: Option<Direction> = row.get(39)?;
-        let maybe_chain_swap_preimage: Option<String> = row.get(40)?;
-        let maybe_chain_swap_description: Option<String> = row.get(41)?;
-        let maybe_chain_swap_refund_tx_id: Option<String> = row.get(42)?;
-        let maybe_chain_swap_payer_amount_sat: Option<u64> = row.get(43)?;
-        let maybe_chain_swap_receiver_amount_sat: Option<u64> = row.get(44)?;
-        let maybe_chain_swap_claim_address: Option<String> = row.get(45)?;
-        let maybe_chain_swap_state: Option<PaymentState> = row.get(46)?;
-        let maybe_chain_swap_pair_fees_json: Option<String> = row.get(47)?;
+        let maybe_chain_swap_id: Option<String> = row.get(37)?;
+        let maybe_chain_swap_created_at: Option<u32> = row.get(38)?;
+        let maybe_chain_swap_timeout_block_height: Option<u32> = row.get(39)?;
+        let maybe_chain_swap_direction: Option<Direction> = row.get(40)?;
+        let maybe_chain_swap_preimage: Option<String> = row.get(41)?;
+        let maybe_chain_swap_description: Option<String> = row.get(42)?;
+        let maybe_chain_swap_refund_tx_id: Option<String> = row.get(43)?;
+        let maybe_chain_swap_payer_amount_sat: Option<u64> = row.get(44)?;
+        let maybe_chain_swap_receiver_amount_sat: Option<u64> = row.get(45)?;
+        let maybe_chain_swap_claim_address: Option<String> = row.get(46)?;
+        let maybe_chain_swap_lockup_address: Option<String> = row.get(47)?;
+        let maybe_chain_swap_state: Option<PaymentState> = row.get(48)?;
+        let maybe_chain_swap_pair_fees_json: Option<String> = row.get(49)?;
         let maybe_chain_swap_pair_fees: Option<ChainPair> =
             maybe_chain_swap_pair_fees_json.and_then(|pair| serde_json::from_str(&pair).ok());
-        let maybe_chain_swap_actual_payer_amount_sat: Option<u64> = row.get(48)?;
-        let maybe_chain_swap_accepted_receiver_amount_sat: Option<u64> = row.get(49)?;
-        let maybe_chain_swap_auto_accepted_fees: Option<bool> = row.get(50)?;
-        let maybe_chain_swap_user_lockup_tx_id: Option<String> = row.get(51)?;
-        let maybe_chain_swap_claim_tx_id: Option<String> = row.get(52)?;
+        let maybe_chain_swap_actual_payer_amount_sat: Option<u64> = row.get(50)?;
+        let maybe_chain_swap_accepted_receiver_amount_sat: Option<u64> = row.get(51)?;
+        let maybe_chain_swap_auto_accepted_fees: Option<bool> = row.get(52)?;
+        let maybe_chain_swap_user_lockup_tx_id: Option<String> = row.get(53)?;
+        let maybe_chain_swap_claim_tx_id: Option<String> = row.get(54)?;
 
-        let maybe_swap_refund_tx_amount_sat: Option<u64> = row.get(53)?;
+        let maybe_swap_refund_tx_amount_sat: Option<u64> = row.get(55)?;
 
-        let maybe_payment_details_destination: Option<String> = row.get(54)?;
-        let maybe_payment_details_description: Option<String> = row.get(55)?;
-        let maybe_payment_details_lnurl_info_json: Option<String> = row.get(56)?;
+        let maybe_payment_details_destination: Option<String> = row.get(56)?;
+        let maybe_payment_details_description: Option<String> = row.get(57)?;
+        let maybe_payment_details_lnurl_info_json: Option<String> = row.get(58)?;
         let maybe_payment_details_lnurl_info: Option<LnUrlInfo> =
             maybe_payment_details_lnurl_info_json.and_then(|info| serde_json::from_str(&info).ok());
-        let maybe_payment_details_bip353_address: Option<String> = row.get(57)?;
-        let maybe_payment_details_asset_fees: Option<u64> = row.get(58)?;
+        let maybe_payment_details_bip353_address: Option<String> = row.get(59)?;
+        let maybe_payment_details_payer_note: Option<String> = row.get(60)?;
+        let maybe_payment_details_asset_fees: Option<u64> = row.get(61)?;
 
-        let maybe_asset_metadata_name: Option<String> = row.get(59)?;
-        let maybe_asset_metadata_ticker: Option<String> = row.get(60)?;
-        let maybe_asset_metadata_precision: Option<u8> = row.get(61)?;
+        let maybe_asset_metadata_name: Option<String> = row.get(62)?;
+        let maybe_asset_metadata_ticker: Option<String> = row.get(63)?;
+        let maybe_asset_metadata_precision: Option<u8> = row.get(64)?;
+
+        let bitcoin_address = match maybe_chain_swap_direction {
+            Some(Direction::Incoming) => maybe_chain_swap_lockup_address,
+            Some(Direction::Outgoing) => maybe_chain_swap_claim_address,
+            None => None,
+        };
 
         let (swap, payment_type) = match maybe_receive_swap_id {
             Some(receive_swap_id) => {
@@ -711,6 +735,7 @@ impl Persister {
                                 })
                                 .unwrap_or("Lightning payment".to_string())
                         }),
+                        payer_note: maybe_receive_swap_payer_note,
                         payer_amount_sat,
                         receiver_amount_sat: maybe_receive_swap_receiver_amount_sat.unwrap_or(0),
                         swapper_fees_sat: maybe_receive_swap_pair_fees
@@ -718,7 +743,7 @@ impl Persister {
                             .unwrap_or(0),
                         refund_tx_id: None,
                         refund_tx_amount_sat: None,
-                        claim_address: None,
+                        bitcoin_address: None,
                         status: maybe_receive_swap_receiver_state.unwrap_or(PaymentState::Created),
                     }),
                     PaymentType::Receive,
@@ -741,6 +766,7 @@ impl Persister {
                             destination_pubkey: maybe_send_swap_destination_pubkey,
                             description: maybe_send_swap_description
                                 .unwrap_or("Lightning payment".to_string()),
+                            payer_note: None,
                             payer_amount_sat: maybe_send_swap_payer_amount_sat.unwrap_or(0),
                             receiver_amount_sat,
                             swapper_fees_sat: maybe_send_swap_pair_fees
@@ -748,7 +774,7 @@ impl Persister {
                                 .unwrap_or(0),
                             refund_tx_id: maybe_send_swap_refund_tx_id,
                             refund_tx_amount_sat: maybe_swap_refund_tx_amount_sat,
-                            claim_address: None,
+                            bitcoin_address: None,
                             status: maybe_send_swap_state.unwrap_or(PaymentState::Created),
                         }),
                         PaymentType::Send,
@@ -796,12 +822,13 @@ impl Persister {
                                 destination_pubkey: None,
                                 description: maybe_chain_swap_description
                                     .unwrap_or("Bitcoin transfer".to_string()),
+                                payer_note: None,
                                 payer_amount_sat,
                                 receiver_amount_sat,
                                 swapper_fees_sat,
                                 refund_tx_id: maybe_chain_swap_refund_tx_id,
                                 refund_tx_amount_sat: maybe_swap_refund_tx_amount_sat,
-                                claim_address: maybe_chain_swap_claim_address,
+                                bitcoin_address: bitcoin_address.clone(),
                                 status: maybe_chain_swap_state.unwrap_or(PaymentState::Created),
                             }),
                             maybe_chain_swap_direction
@@ -825,6 +852,7 @@ impl Persister {
                     bolt12_offer,
                     payment_hash,
                     destination_pubkey,
+                    payer_note,
                     refund_tx_id,
                     preimage,
                     refund_tx_amount_sat,
@@ -838,6 +866,7 @@ impl Persister {
                     bolt12_offer,
                     payment_hash,
                     destination_pubkey,
+                    payer_note,
                     preimage,
                     refund_tx_id,
                     refund_tx_amount_sat,
@@ -857,6 +886,7 @@ impl Persister {
                 }),
                 lnurl_info: maybe_payment_details_lnurl_info,
                 bip353_address: maybe_payment_details_bip353_address,
+                payer_note: payer_note.or(maybe_payment_details_payer_note),
                 claim_tx_id: maybe_claim_tx_id,
                 refund_tx_id,
                 refund_tx_amount_sat,
@@ -881,6 +911,7 @@ impl Persister {
 
                 PaymentDetails::Bitcoin {
                     swap_id,
+                    bitcoin_address: bitcoin_address.unwrap_or_default(),
                     lockup_tx_id: maybe_chain_swap_user_lockup_tx_id,
                     claim_tx_id: maybe_claim_tx_id,
                     refund_tx_id,
@@ -937,6 +968,7 @@ impl Persister {
                     asset_info,
                     lnurl_info: maybe_payment_details_lnurl_info,
                     bip353_address: maybe_payment_details_bip353_address,
+                    payer_note: maybe_payment_details_payer_note,
                 }
             }
         };

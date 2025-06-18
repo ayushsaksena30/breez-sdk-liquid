@@ -97,11 +97,10 @@ export interface Config {
     paymentTimeoutSec: number
     syncServiceUrl?: string
     breezApiKey?: string
-    cacheDir?: string
     zeroConfMaxAmountSat?: number
     useDefaultExternalInputParsers: boolean
     externalInputParsers?: ExternalInputParser[]
-    onchainFeeRateLeewaySatPerVbyte?: number
+    onchainFeeRateLeewaySat?: number
     assetMetadata?: AssetMetadata[]
     sideswapApiKey?: string
 }
@@ -356,6 +355,7 @@ export interface PrepareLnUrlPayResponse {
     destination: SendDestination
     feesSat: number
     data: LnUrlPayRequestData
+    amount: PayAmount
     comment?: string
     successAction?: SuccessAction
 }
@@ -404,6 +404,7 @@ export interface PrepareSendRequest {
 
 export interface PrepareSendResponse {
     destination: SendDestination
+    amount?: PayAmount
     feesSat?: number
     estimatedAssetFees?: number
 }
@@ -417,6 +418,7 @@ export interface ReceivePaymentRequest {
     prepareResponse: PrepareReceiveResponse
     description?: string
     useDescriptionHash?: boolean
+    payerNote?: string
 }
 
 export interface ReceivePaymentResponse {
@@ -469,6 +471,7 @@ export interface RouteHintHop {
 export interface SendPaymentRequest {
     prepareResponse: PrepareSendResponse
     useAssetFees?: boolean
+    payerNote?: string
 }
 
 export interface SendPaymentResponse {
@@ -719,6 +722,7 @@ export type PaymentDetails = {
     destinationPubkey?: string
     lnurlInfo?: LnUrlInfo
     bip353Address?: string
+    payerNote?: string
     claimTxId?: string
     refundTxId?: string
     refundTxAmountSat?: number
@@ -730,9 +734,11 @@ export type PaymentDetails = {
     assetInfo?: AssetInfo
     lnurlInfo?: LnUrlInfo
     bip353Address?: string
+    payerNote?: string
 } | {
     type: PaymentDetailsVariant.BITCOIN,
     swapId: string
+    bitcoinAddress: string
     description: string
     autoAcceptedFees: boolean
     bitcoinExpirationBlockheight?: number

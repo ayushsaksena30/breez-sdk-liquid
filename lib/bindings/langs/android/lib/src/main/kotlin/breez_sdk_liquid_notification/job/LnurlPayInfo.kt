@@ -2,9 +2,11 @@ package breez_sdk_liquid_notification.job
 
 import android.content.Context
 import breez_sdk_liquid.BindingLiquidSdk
+import breez_sdk_liquid_notification.Constants.CACHE_CONTROL_MAX_AGE_DAY
 import breez_sdk_liquid_notification.Constants.DEFAULT_LNURL_PAY_INFO_NOTIFICATION_TITLE
 import breez_sdk_liquid_notification.Constants.DEFAULT_LNURL_PAY_METADATA_PLAIN_TEXT
 import breez_sdk_liquid_notification.Constants.DEFAULT_LNURL_PAY_NOTIFICATION_FAILURE_TITLE
+import breez_sdk_liquid_notification.Constants.LNURL_PAY_COMMENT_MAX_LENGTH
 import breez_sdk_liquid_notification.Constants.LNURL_PAY_INFO_NOTIFICATION_TITLE
 import breez_sdk_liquid_notification.Constants.LNURL_PAY_METADATA_PLAIN_TEXT
 import breez_sdk_liquid_notification.Constants.LNURL_PAY_NOTIFICATION_FAILURE_TITLE
@@ -32,6 +34,7 @@ data class LnurlPayInfoResponse(
     val maxSendable: ULong,
     val minSendable: ULong,
     val metadata: String,
+    val commentAllowed: Int,
     val tag: String,
 )
 
@@ -72,9 +75,10 @@ class LnurlPayInfoJob(
                     maxSendableMsat,
                     minSendableMsat,
                     "[[\"text/plain\",\"$plainTextMetadata\"]]",
+                    LNURL_PAY_COMMENT_MAX_LENGTH,
                     "payRequest",
                 )
-            val success = replyServer(Json.encodeToString(response), request.replyURL)
+            val success = replyServer(Json.encodeToString(response), request.replyURL, CACHE_CONTROL_MAX_AGE_DAY)
             notifyChannel(
                 context,
                 NOTIFICATION_CHANNEL_REPLACEABLE,

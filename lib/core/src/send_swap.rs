@@ -34,7 +34,7 @@ use crate::{
 pub(crate) struct SendSwapHandler {
     config: Config,
     onchain_wallet: Arc<dyn OnchainWallet>,
-    persister: Arc<Persister>,
+    persister: std::sync::Arc<Persister>,
     swapper: Arc<dyn Swapper>,
     chain_service: Arc<dyn LiquidChainService>,
     subscription_notifier: broadcast::Sender<String>,
@@ -56,7 +56,7 @@ impl SendSwapHandler {
     pub(crate) fn new(
         config: Config,
         onchain_wallet: Arc<dyn OnchainWallet>,
-        persister: Arc<Persister>,
+        persister: std::sync::Arc<Persister>,
         swapper: Arc<dyn Swapper>,
         chain_service: Arc<dyn LiquidChainService>,
         recoverer: Arc<Recoverer>,
@@ -344,7 +344,7 @@ impl SendSwapHandler {
                             description,
                             lnurl_info: Some(lnurl_info),
                             bip353_address,
-                            asset_fees: None,
+                            ..Default::default()
                         })?;
                     return Ok(true);
                 }

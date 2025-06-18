@@ -65,6 +65,7 @@ impl Persister {
             SET
                 bolt12_offer = :bolt12_offer,
                 description = :description,
+                payer_note = :payer_note,
                 claim_address = :claim_address,
                 claim_tx_id = :claim_tx_id,
                 lockup_tx_id = :lockup_tx_id,
@@ -79,6 +80,7 @@ impl Persister {
                 ":id": &receive_swap.id,
                 ":bolt12_offer": &receive_swap.bolt12_offer,
                 ":description": &receive_swap.description,
+                ":payer_note": &receive_swap.payer_note,
                 ":claim_address": &receive_swap.claim_address,
                 ":claim_tx_id": &receive_swap.claim_tx_id,
                 ":lockup_tx_id": &receive_swap.lockup_tx_id,
@@ -147,6 +149,7 @@ impl Persister {
                 rs.destination_pubkey,
                 rs.timeout_block_height,
                 rs.description,
+                rs.payer_note,
                 rs.payer_amount_sat,
                 rs.receiver_amount_sat,
                 rs.claim_fees_sat,
@@ -201,21 +204,22 @@ impl Persister {
             destination_pubkey: row.get(7)?,
             timeout_block_height: row.get(8)?,
             description: row.get(9)?,
-            payer_amount_sat: row.get(10)?,
-            receiver_amount_sat: row.get(11)?,
-            claim_fees_sat: row.get(12)?,
-            claim_address: row.get(13)?,
-            claim_tx_id: row.get(14)?,
-            lockup_tx_id: row.get(15)?,
-            mrh_address: row.get(16)?,
-            mrh_tx_id: row.get(17)?,
-            created_at: row.get(18)?,
-            state: row.get(19)?,
-            pair_fees_json: row.get(20)?,
+            payer_note: row.get(10)?,
+            payer_amount_sat: row.get(11)?,
+            receiver_amount_sat: row.get(12)?,
+            claim_fees_sat: row.get(13)?,
+            claim_address: row.get(14)?,
+            claim_tx_id: row.get(15)?,
+            lockup_tx_id: row.get(16)?,
+            mrh_address: row.get(17)?,
+            mrh_tx_id: row.get(18)?,
+            created_at: row.get(19)?,
+            state: row.get(20)?,
+            pair_fees_json: row.get(21)?,
             metadata: SwapMetadata {
-                version: row.get(21)?,
-                last_updated_at: row.get(22)?,
-                is_local: row.get::<usize, Option<bool>>(23)?.unwrap_or(true),
+                version: row.get(22)?,
+                last_updated_at: row.get(23)?,
+                is_local: row.get::<usize, Option<bool>>(24)?.unwrap_or(true),
             },
         })
     }
@@ -234,22 +238,12 @@ impl Persister {
         Ok(ongoing_receive)
     }
 
-    pub(crate) fn list_ongoing_receive_swaps(
-        &self,
-        is_local: Option<bool>,
-    ) -> Result<Vec<ReceiveSwap>> {
+    pub(crate) fn list_ongoing_receive_swaps(&self) -> Result<Vec<ReceiveSwap>> {
         let con = self.get_connection()?;
-        let mut where_clauses = vec![get_where_clause_state_in(&[
+        let where_clauses = vec![get_where_clause_state_in(&[
             PaymentState::Created,
             PaymentState::Pending,
         ])];
-        if let Some(is_local) = is_local {
-            let mut where_is_local = format!("sync_state.is_local = {}", is_local as u8);
-            if is_local {
-                where_is_local = format!("({} OR sync_state.is_local IS NULL)", where_is_local);
-            }
-            where_clauses.push(where_is_local);
-        }
 
         self.list_receive_swaps_where(&con, where_clauses)
     }
@@ -464,7 +458,7 @@ mod tests {
         // List ongoing receive swaps
         storage
             .insert_or_update_receive_swap(&new_receive_swap(Some(PaymentState::Pending), None))?;
-        let ongoing_swaps = storage.list_ongoing_receive_swaps(None)?;
+        let ongoing_swaps = storage.list_ongoing_receive_swaps()?;
         assert_eq!(ongoing_swaps.len(), 4);
 
         Ok(())

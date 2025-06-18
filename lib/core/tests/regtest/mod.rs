@@ -80,25 +80,16 @@ impl SdkNodeHandle {
                 sdk_common::prelude::PRODUCTION_BREEZSERVER_URL.to_string(),
                 signer.clone(),
             )?;
-            let persister = Arc::new(breez_sdk_liquid::persist::Persister::new_in_memory(
-                &config.working_dir,
-                config.network,
-                config.sync_enabled(),
-                config.asset_metadata.clone(),
-                None,
-            )?);
-
-            let onchain_wallet = Arc::new(
-                breez_sdk_liquid::wallet::LiquidOnchainWallet::new_in_memory(
-                    config,
-                    Arc::clone(&persister),
-                    signer,
-                )
-                .await?,
-            );
+            let persister =
+                std::sync::Arc::new(breez_sdk_liquid::persist::Persister::new_in_memory(
+                    &config.working_dir,
+                    config.network,
+                    config.sync_enabled(),
+                    config.asset_metadata.clone(),
+                    None,
+                )?);
 
             sdk_builder.persister(persister);
-            sdk_builder.onchain_wallet(onchain_wallet);
 
             let sdk = sdk_builder.build().await?;
             sdk.start().await?;
@@ -150,6 +141,7 @@ impl SdkNodeHandle {
                 prepare_response: prepare_response.clone(),
                 description: None,
                 use_description_hash: None,
+                payer_note: None,
             })
             .await?;
         Ok((prepare_response, receive_response))
@@ -165,6 +157,7 @@ impl SdkNodeHandle {
             .send_payment(&SendPaymentRequest {
                 prepare_response: prepare_response.clone(),
                 use_asset_fees: None,
+                payer_note: None,
             })
             .await?;
         Ok((prepare_response, send_response))
