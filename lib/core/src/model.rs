@@ -103,6 +103,10 @@ pub struct Config {
     pub sideswap_api_key: Option<String>,
     /// Set this to false to disable the use of Magic Routing Hints (MRH) to send payments. Enabled by default.
     pub use_magic_routing_hints: bool,
+    // Whether or not to enable Nostr Wallet Connect
+    pub enable_nwc: Option<bool>,
+    /// A list of Nostr relay URLs for NWC connections. If None, default relays will be used.
+    pub nwc_relay_urls: Option<Vec<String>>,
 }
 
 impl Config {
@@ -127,6 +131,8 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
+            enable_nwc: Some(false),
+            nwc_relay_urls: None,
         }
     }
 
@@ -152,6 +158,8 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
+            enable_nwc: Some(false),
+            nwc_relay_urls: None,
         }
     }
 
@@ -176,6 +184,8 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
+            enable_nwc: Some(false),
+            nwc_relay_urls: None,
         }
     }
 
@@ -201,6 +211,8 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
+            enable_nwc: Some(false),
+            nwc_relay_urls: None,
         }
     }
 
@@ -225,6 +237,8 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: None,
             use_magic_routing_hints: true,
+            enable_nwc: Some(false),
+            nwc_relay_urls: None,
         }
     }
 
@@ -250,6 +264,8 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: None,
             use_magic_routing_hints: true,
+            enable_nwc: Some(false),
+            nwc_relay_urls: None,
         }
     }
 
@@ -367,6 +383,16 @@ impl Config {
             LiquidNetwork::Mainnet => SIDESWAP_MAINNET_URL,
             LiquidNetwork::Testnet => SIDESWAP_TESTNET_URL,
             LiquidNetwork::Regtest => unimplemented!(),
+        }
+    }
+
+    pub(crate) fn nwc_relays(&self) -> Vec<String> {
+        match &self.nwc_relay_urls {
+            Some(relays) => relays.clone(),
+            None => vec![
+                "wss://relay.damus.io".to_string(),
+                "wss://nostr-pub.wellorder.net".to_string(),
+            ],
         }
     }
 }
