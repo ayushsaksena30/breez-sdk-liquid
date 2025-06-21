@@ -368,7 +368,7 @@ impl LiquidSdkBuilder {
 
         let external_input_parsers = self.config.get_all_external_input_parsers();
 
-        let sdk = Arc::new(LiquidSdk {
+        let mut sdk = Arc::new(LiquidSdk {
             config: self.config.clone(),
             onchain_wallet,
             signer: self.signer.clone(),
@@ -577,7 +577,7 @@ impl LiquidSdk {
         }
 
         Ok(())
-    }
+    } //TODO: ADD NOSTR RELAY SERVICE (CALL self.nwcService.start(shutdown channel)), done.
 
     async fn ensure_is_started(&self) -> SdkResult<()> {
         let is_started = self.is_started.read().await;
