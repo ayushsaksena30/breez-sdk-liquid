@@ -52,15 +52,15 @@ async fn connect_inner(
     signer: Box<dyn breez_sdk_liquid::model::Signer>,
 ) -> WasmResult<BindingLiquidSdk> {
     let config: breez_sdk_liquid::model::Config = config.into();
-    let signer = Rc::new(signer);
+    let signer = Arc::new(signer);
 
     let mut sdk_builder = LiquidSdkBuilder::new(
         config.clone(),
         PRODUCTION_BREEZSERVER_URL.to_string(),
-        Rc::clone(&signer),
+        Arc::clone(&signer),
     )?;
 
-    let sdk_lwk_signer = SdkLwkSigner::new(Rc::clone(&signer))?;
+    let sdk_lwk_signer = SdkLwkSigner::new(Arc::clone(&signer))?;
     let fingerprint = sdk_lwk_signer.fingerprint()?;
     let fingerprint = fingerprint.to_hex();
 
@@ -394,5 +394,10 @@ impl BindingLiquidSdk {
 
         self.persister.clear_in_memory_db()?;
         Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "getNwcUri")]
+    pub async fn get_nwc_uri(&self) -> WasmResult<String> {
+        Ok(self.sdk.get_nwc_uri().await?)
     }
 }
