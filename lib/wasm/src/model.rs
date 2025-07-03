@@ -295,7 +295,6 @@ pub struct Symbol {
 #[derive(Clone)]
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::BlockchainExplorer)]
 pub enum BlockchainExplorer {
-    Electrum { url: String },
     Esplora { url: String, use_waterfalls: bool },
 }
 
