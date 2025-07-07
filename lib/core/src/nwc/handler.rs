@@ -224,140 +224,147 @@ impl RelayMessageHandler for SdkRelayMessageHandler {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::test_utils::{persist::create_persister,sdk::new_liquid_sdk, status_stream::MockStatusStream, swapper::MockSwapper};
-  use std::sync::Arc;
-
-  //TODO: return sdk and BreezRelayMessageHandler, write a macro, done.
-  #[macro_export]
-  macro_rules! setup_test_handler {
-    ($sdk:ident, $handler:ident) => {
-      create_persister!(persister);
-      let swapper = Arc::new(MockSwapper::default());
-      let status_stream = Arc::new(MockStatusStream::new());
-
-      let $sdk =
-        new_liquid_sdk(persister.clone(), swapper.clone(), status_stream.clone())
-          .await
-          .unwrap();
-      
-      // Start the SDK
-      $sdk.start().await.unwrap();
-
-      let $handler = BreezRelayMessageHandler::new($sdk.clone());
+    use super::*;
+    use crate::test_utils::{
+        persist::create_persister, sdk::new_liquid_sdk, status_stream::MockStatusStream,
+        swapper::MockSwapper,
     };
-  }
+    use std::sync::Arc;
 
+    //TODO: return sdk and BreezRelayMessageHandler, write a macro, done.
+    #[macro_export]
+    macro_rules! setup_test_handler {
+        ($sdk:ident, $handler:ident) => {
+            create_persister!(persister);
+            let swapper = Arc::new(MockSwapper::default());
+            let status_stream = Arc::new(MockStatusStream::new());
 
-  #[sdk_macros::async_test_all] //TODO: use sdk_macros, done.
-  async fn test_pay_invoice() -> anyhow::Result<()> {
-    setup_test_handler!(sdk, handler);
+            let $sdk = new_liquid_sdk(persister.clone(), swapper.clone(), status_stream.clone())
+                .await
+                .unwrap();
 
-    let invoice = "lntb1u1p5ymklqsp57u297u963mzxj4e5q0d3p424pjqr7uzd6jtps9mgejgaf6vnau9spp5svzg0d36d04kmsaz9x674r9gg0a8xr6sla5atmj2u2kumlsemppsdq6w3jhxapqv3jhxcmjd9c8g6t0dcxqyjw5qcqp29qxpqysgqlyuk2zmjwq0a9285atyukjql3qxwd8lpy8aj9fypwxst3lzlw4cxamtnxtwvz7m82gwspprsr6dzlu4n2dpgtckfjlkyfg0qyh5mc8spu0chpn";
+            // Start the SDK
+            $sdk.start().await.unwrap();
 
-    // Create a test invoice request
-    let request = PayInvoiceRequest {
-        id: None,
-        invoice: invoice.to_string(),
-        amount: Some(100000),
-    };
-
-    // Test the pay_invoice function
-    let result = handler.pay_invoice(request).await;
-    if let Err(e) = &result {
-      println!("pay_invoice failed with error: {:?}", e);
+            let $handler = BreezRelayMessageHandler::new($sdk.clone());
+        };
     }
-    assert!(result.is_ok());
-    
-    let response = result.unwrap();
-    //assert!(Some(response.preimage)); //TODO: check if the preimage is valid, HOWW???
-    assert!(response.fees_paid.is_some());
-    Ok(())
-  }
 
-  #[sdk_macros::async_test_all]
-  async fn test_list_transactions() -> anyhow::Result<()> {
-    setup_test_handler!(sdk, handler);
-    // TODO: exectue a send payment, done.
-    test_send_payment(sdk.clone()).await;
+    #[sdk_macros::async_test_all] //TODO: use sdk_macros, done.
+    async fn test_pay_invoice() -> anyhow::Result<()> {
+        setup_test_handler!(sdk, handler);
 
-    // Create a test list transactions request
-    let request = ListTransactionsRequest {
-      limit: Some(10),
-      offset: Some(0),
-      transaction_type: Some(TransactionType::Outgoing),
-      unpaid: Some(false),
-      from: None,
-      until: None,
-    };
+        let invoice = "lntb1u1p5ymklqsp57u297u963mzxj4e5q0d3p424pjqr7uzd6jtps9mgejgaf6vnau9spp5svzg0d36d04kmsaz9x674r9gg0a8xr6sla5atmj2u2kumlsemppsdq6w3jhxapqv3jhxcmjd9c8g6t0dcxqyjw5qcqp29qxpqysgqlyuk2zmjwq0a9285atyukjql3qxwd8lpy8aj9fypwxst3lzlw4cxamtnxtwvz7m82gwspprsr6dzlu4n2dpgtckfjlkyfg0qyh5mc8spu0chpn";
 
-    let result = handler.list_transactions(request).await;
-    match result {
-      Ok(response) => {
-        // Print transactions
-        println!("\n=== Transactions ===");
-        for (i, transaction) in response.iter().enumerate() {
-          println!("\nTransaction {}:", i + 1);
-          println!("Invoice: {}", transaction.invoice.as_deref().unwrap_or("N/A"));
-          println!("Amount: {} sats", transaction.amount);
-          println!("Type: {:?}", transaction.transaction_type);
-          println!("Created at: {}", transaction.created_at);
-          if let Some(settled_at) = transaction.settled_at {
-            println!("Settled at: {}", settled_at);
-          }
-        }
-
-      assert!(!response.is_empty());
-      let transaction = &response[0];
-      assert!(!transaction.invoice.as_ref().map_or(false, |s| s.is_empty()));
-      assert!(transaction.amount > 0);
-    }
-    Err(e) => panic!("list_transactions failed: {:?}", e),
-}
-    Ok(())
-  }
-
-  #[sdk_macros::async_test_all]
-  async fn test_get_balance() -> anyhow::Result<()> {
-    setup_test_handler!(sdk, handler);
-    // TODO: exectue a send payment, done.
-    test_send_payment(sdk.clone()).await;
-    let result = handler.get_balance().await;
-    assert!(result.is_ok());
-    
-    let response = result.unwrap();
-    assert!(response.balance >= 0);
-    Ok(())
-  }
-
-  pub async fn test_send_payment(sdk: Arc<LiquidSdk>) {
-    let invoice = "lntb1u1p5ymklqsp57u297u963mzxj4e5q0d3p424pjqr7uzd6jtps9mgejgaf6vnau9spp5svzg0d36d04kmsaz9x674r9gg0a8xr6sla5atmj2u2kumlsemppsdq6w3jhxapqv3jhxcmjd9c8g6t0dcxqyjw5qcqp29qxpqysgqlyuk2zmjwq0a9285atyukjql3qxwd8lpy8aj9fypwxst3lzlw4cxamtnxtwvz7m82gwspprsr6dzlu4n2dpgtckfjlkyfg0qyh5mc8spu0chpn";
-
-    let prepare_request = PrepareSendRequest {
-      comment: None,
-      destination: invoice.to_string(),
-      amount: None,
-    };
-
-    match sdk.prepare_send_payment(&prepare_request).await {
-      Ok(prepare_response) => {
-        let send_request = SendPaymentRequest {
-          prepare_response,
-          use_asset_fees: None,
+        // Create a test invoice request
+        let request = PayInvoiceRequest {
+            id: None,
+            invoice: invoice.to_string(),
+            amount: Some(100000),
         };
 
-        match sdk.send_payment(&send_request).await {
-          Ok(response) => {
-            println!("Payment successful! Payment details: {:?}", response.payment);
-          }
-          Err(e) => {
-            println!("Failed to send payment: {}", e);
-          }
+        // Test the pay_invoice function
+        let result = handler.pay_invoice(request).await;
+        if let Err(e) = &result {
+            println!("pay_invoice failed with error: {:?}", e);
         }
-      }
-      Err(e) => {
-        println!("Failed to prepare payment: {}", e);
-      }
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        //assert!(Some(response.preimage)); //TODO: check if the preimage is valid, HOWW???
+        assert!(response.fees_paid.is_some());
+        Ok(())
     }
-  }
+
+    #[sdk_macros::async_test_all]
+    async fn test_list_transactions() -> anyhow::Result<()> {
+        setup_test_handler!(sdk, handler);
+        // TODO: exectue a send payment, done.
+        test_send_payment(sdk.clone()).await;
+
+        // Create a test list transactions request
+        let request = ListTransactionsRequest {
+            limit: Some(10),
+            offset: Some(0),
+            transaction_type: Some(TransactionType::Outgoing),
+            unpaid: Some(false),
+            from: None,
+            until: None,
+        };
+
+        let result = handler.list_transactions(request).await;
+        match result {
+            Ok(response) => {
+                // Print transactions
+                println!("\n=== Transactions ===");
+                for (i, transaction) in response.iter().enumerate() {
+                    println!("\nTransaction {}:", i + 1);
+                    println!(
+                        "Invoice: {}",
+                        transaction.invoice.as_deref().unwrap_or("N/A")
+                    );
+                    println!("Amount: {} sats", transaction.amount);
+                    println!("Type: {:?}", transaction.transaction_type);
+                    println!("Created at: {}", transaction.created_at);
+                    if let Some(settled_at) = transaction.settled_at {
+                        println!("Settled at: {}", settled_at);
+                    }
+                }
+
+                assert!(!response.is_empty());
+                let transaction = &response[0];
+                assert!(!transaction.invoice.as_ref().map_or(false, |s| s.is_empty()));
+                assert!(transaction.amount > 0);
+            }
+            Err(e) => panic!("list_transactions failed: {:?}", e),
+        }
+        Ok(())
+    }
+
+    #[sdk_macros::async_test_all]
+    async fn test_get_balance() -> anyhow::Result<()> {
+        setup_test_handler!(sdk, handler);
+        // TODO: exectue a send payment, done.
+        test_send_payment(sdk.clone()).await;
+        let result = handler.get_balance().await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert!(response.balance >= 0);
+        Ok(())
+    }
+
+    pub async fn test_send_payment(sdk: Arc<LiquidSdk>) {
+        let invoice = "lntb1u1p5ymklqsp57u297u963mzxj4e5q0d3p424pjqr7uzd6jtps9mgejgaf6vnau9spp5svzg0d36d04kmsaz9x674r9gg0a8xr6sla5atmj2u2kumlsemppsdq6w3jhxapqv3jhxcmjd9c8g6t0dcxqyjw5qcqp29qxpqysgqlyuk2zmjwq0a9285atyukjql3qxwd8lpy8aj9fypwxst3lzlw4cxamtnxtwvz7m82gwspprsr6dzlu4n2dpgtckfjlkyfg0qyh5mc8spu0chpn";
+
+        let prepare_request = PrepareSendRequest {
+            destination: invoice.to_string(),
+            amount: None,
+        };
+
+        match sdk.prepare_send_payment(&prepare_request).await {
+            Ok(prepare_response) => {
+                let send_request = SendPaymentRequest {
+                    prepare_response,
+                    use_asset_fees: None,
+                    payer_note: None,
+                };
+
+                match sdk.send_payment(&send_request).await {
+                    Ok(response) => {
+                        println!(
+                            "Payment successful! Payment details: {:?}",
+                            response.payment
+                        );
+                    }
+                    Err(e) => {
+                        println!("Failed to send payment: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("Failed to prepare payment: {}", e);
+            }
+        }
+    }
 }

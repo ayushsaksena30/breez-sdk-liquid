@@ -368,7 +368,7 @@ impl LiquidSdkBuilder {
 
         let external_input_parsers = self.config.get_all_external_input_parsers();
 
-        let mut sdk = Arc::new(LiquidSdk {
+        let sdk = Arc::new(LiquidSdk {
             config: self.config.clone(),
             onchain_wallet,
             signer: self.signer.clone(),
