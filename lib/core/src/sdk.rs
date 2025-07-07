@@ -43,7 +43,7 @@ use sdk_common::utils::Arc;
 use side_swap::api::SideSwapService;
 use signer::SdkSigner;
 use swapper::boltz::proxy::BoltzProxyFetcher;
-use tokio::sync::{watch, Mutex, RwLock, OnceCell};
+use tokio::sync::{watch, Mutex, OnceCell, RwLock};
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_with_wasm::alias as tokio;
 use web_time::{Instant, SystemTime, UNIX_EPOCH};
@@ -55,7 +55,7 @@ use crate::error::SdkError;
 use crate::lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescription};
 use crate::model::PaymentState::*;
 use crate::model::Signer;
-use crate::nwc::{BreezNWCService, NWCService, handler::BreezRelayMessageHandler};
+use crate::nwc::{handler::BreezRelayMessageHandler, BreezNWCService, NWCService};
 use crate::payjoin::{side_swap::SideSwapPayjoinService, PayjoinService};
 use crate::receive_swap::ReceiveSwapHandler;
 use crate::send_swap::SendSwapHandler;
@@ -360,7 +360,7 @@ impl LiquidSdkBuilder {
 
         let external_input_parsers = self.config.get_all_external_input_parsers();
 
-        let mut sdk = Arc::new(LiquidSdk {
+        let sdk = Arc::new(LiquidSdk {
             config: self.config.clone(),
             onchain_wallet,
             signer: self.signer.clone(),
@@ -390,15 +390,23 @@ impl LiquidSdkBuilder {
         let nwc_service = match self.nwc_service.clone() {
             Some(nwc_service) => Some(nwc_service),
             None => match self.config.enable_nwc.unwrap_or(false) {
-                false => None, 
+                false => None,
                 true => {
-                    let nwc_service: Arc<dyn NWCService> = sdk_common::utils::Arc::new(BreezNWCService::new(sdk_common::utils::Arc::new(BreezRelayMessageHandler::new(sdk.clone())), &self.config.nwc_relays()).await?);
+                    let nwc_service: Arc<dyn NWCService> = sdk_common::utils::Arc::new(
+                        BreezNWCService::new(
+                            sdk_common::utils::Arc::new(BreezRelayMessageHandler::new(sdk.clone())),
+                            &self.config.nwc_relays(),
+                        )
+                        .await?,
+                    );
                     Some(nwc_service)
                 }
             },
         };
         if let Some(nwc_service) = nwc_service {
-            sdk.nwc_service.set(nwc_service).map_err(|e| anyhow!("Failed to set NWC Service: {e}"))?;
+            sdk.nwc_service
+                .set(nwc_service)
+                .map_err(|e| anyhow!("Failed to set NWC Service: {e}"))?;
         }
 
         Ok(sdk)
@@ -4998,12 +5006,12 @@ impl LiquidSdk {
     }
 
     /// Returns the Nostr Wallet Connect (NWC) connection URI.
-    /// 
+    ///
     /// ### Returns
-    /// 
+    ///
     /// Returns the NWC connection URI as a string if NWC is enabled and initialized,
     /// otherwise returns an error.
-    /// 
+    ///
     /// ### Errors
     /// Error is thrown when:
     /// - NWC service is not enabled in the configuration
@@ -5015,12 +5023,12 @@ impl LiquidSdk {
                 nwc_service
                     .create_connection_string()
                     .await
-                    .map_err(|e| SdkError::Generic { 
-                        err: format!("Failed to create NWC connection string: {}", e) 
+                    .map_err(|e| SdkError::Generic {
+                        err: format!("Failed to create NWC connection string: {}", e)
                     })
             }
-            None => Err(SdkError::Generic { 
-                err: "NWC service is not enabled. Set 'enable_nwc' to true in the Config to use NWC functionality".to_string() 
+            None => Err(SdkError::Generic {
+                err: "NWC service is not enabled. Set 'enable_nwc' to true in the Config to use NWC functionality".to_string()
             }),
         }
     }

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::Sender;
 
 use anyhow::Result;
 use log::{debug, info};
