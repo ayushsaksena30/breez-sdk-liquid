@@ -2,14 +2,15 @@ use anyhow::Result;
 use bip39::rand::{self, RngCore};
 use handler::{BreezRelayMessageHandler, RelayMessageHandler};
 use log::{info, warn};
+use maybe_sync::{MaybeSend, MaybeSync};
 use nostr_sdk::{
     nips::nip04::decrypt,
     nips::nip47::{
-        ErrorCode, Method, NIP47Error, NostrWalletConnectURI, Request, RequestParams, Response, ResponseResult,
+        ErrorCode, Method, NIP47Error, NostrWalletConnectURI, Request, RequestParams, Response,
+        ResponseResult,
     },
-    Client as NostrClient, EventBuilder, Keys, Kind, RelayPoolNotification, SecretKey,
+    Client as NostrClient, EventBuilder, Keys, Kind, RelayPoolNotification,
 };
-use maybe_sync::{MaybeSend, MaybeSync};
 // use std::sync::Arc;
 use sdk_common::utils::Arc;
 use tokio::sync::{broadcast, watch, OnceCell};
@@ -20,41 +21,41 @@ use tokio::task::spawn as platform_spawn;
 #[cfg(all(target_family = "wasm", target_os = "unknown"))]
 use tokio::task::spawn_local as platform_spawn;
 
-use crate::model::{SdkEvent, NwcEvent};
+use crate::model::{NwcEvent, SdkEvent};
 
 pub(crate) mod handler;
 
 #[sdk_macros::async_trait]
-pub trait NWCService: MaybeSend+MaybeSync {
+pub trait NWCService: MaybeSend + MaybeSync {
     /// Creates a Nostr Wallet Connect connection string for this service.
-    /// 
+    ///
     /// Generates a unique connection URI that external applications can use
     /// to connect to this wallet service. The URI includes the wallet's public key,
     /// relay information, and a randomly generated secret for secure communication.
-    /// 
+    ///
     /// # Returns
     /// * `Ok(String)` - The connection string that clients can use
     /// * `Err(anyhow::Error)` - Error generating the connection string
     async fn create_connection_string(&self) -> Result<String>;
 
     /// Starts the NWC service event processing loop.
-    /// 
+    ///
     /// Establishes connections to Nostr relays and begins listening for incoming
     /// wallet operation requests. The service will:
     /// 1. Connect to configured relays
     /// 2. Broadcast service capability information
     /// 3. Listen for and process incoming requests
     /// 4. Send appropriate responses back through the relays
-    /// 
+    ///
     /// The service runs until a shutdown signal is received.
-    /// 
+    ///
     /// # Arguments
     /// * `shutdown_receiver` - Channel for receiving shutdown signals
     /// * `notifier` - Broadcast sender for emitting SDK events
     fn start(&self, shutdown_receiver: watch::Receiver<()>, notifier: broadcast::Sender<SdkEvent>);
 
     /// Stops the NWC service and performs cleanup.
-    /// 
+    ///
     /// Gracefully shuts down the service by:
     /// 1. Disconnecting from all Nostr relays
     /// 2. Aborting the background event processing task
@@ -72,22 +73,19 @@ pub struct BreezNWCService<Handler: RelayMessageHandler> {
 
 impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     /// Creates a new BreezNWCService instance.
-    /// 
+    ///
     /// Initializes the service with the provided cryptographic keys, handler,
     /// and connects to the specified Nostr relays.
-    /// 
+    ///
     /// # Arguments
     /// * `secret_key` - The secret key for signing Nostr events
     /// * `handler` - Handler for processing relay messages
     /// * `relays` - List of relay URLs to connect to
-    /// 
+    ///
     /// # Returns
     /// * `Ok(BreezNWCService)` - Successfully initialized service
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
-    pub(crate) async fn new(
-        handler: Arc<Handler>,
-        relays: &[String],
-    ) -> Result<Self> {
+    pub(crate) async fn new(handler: Arc<Handler>, relays: &[String]) -> Result<Self> {
         let client = Arc::new(NostrClient::default());
         for relay in relays {
             client.add_relay(relay).await?;
@@ -120,50 +118,40 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         error: &Option<NIP47Error>,
     ) -> Result<()> {
         let event: SdkEvent = match (result, error) {
-            (Some(ResponseResult::PayInvoice(response)), None) => {
-                SdkEvent::NWC {
+            (Some(ResponseResult::PayInvoice(response)), None) => SdkEvent::NWC {
+                details: NwcEvent::PayInvoice {
+                    success: true,
+                    preimage: Some(response.preimage.clone()),
+                    fees_sat: response.fees_paid.map(|f| f / 1000),
+                    error: None,
+                },
+            },
+            (None, Some(error)) => match error.code {
+                ErrorCode::PaymentFailed => SdkEvent::NWC {
                     details: NwcEvent::PayInvoice {
-                        success: true,
-                        preimage: Some(response.preimage.clone()),
-                        fees_sat: response.fees_paid.map(|f| f / 1000),
-                        error: None,
+                        success: false,
+                        preimage: None,
+                        fees_sat: None,
+                        error: Some(error.message.clone()),
                     },
+                },
+                _ => {
+                    warn!("Unhandled error code: {:?}", error.code);
+                    return Ok(());
                 }
-            }
-            (None, Some(error)) => {
-                match error.code {
-                    ErrorCode::PaymentFailed => {
-                        SdkEvent::NWC {
-                            details: NwcEvent::PayInvoice {
-                                success: false,
-                                preimage: None,
-                                fees_sat: None,
-                                error: Some(error.message.clone()),
-                            },
-                        }
-                    }
-                    _ => {
-                        warn!("Unhandled error code: {:?}", error.code);
-                        return Ok(());
-                    }
-                }
-            }
-            (Some(ResponseResult::ListTransactions(_)), None) => {
-                SdkEvent::NWC {
-                    details: NwcEvent::ListTransactions,
-                }
-            }
-            (Some(ResponseResult::GetBalance(_)), None) => {
-                SdkEvent::NWC {
-                    details: NwcEvent::GetBalance,
-                }
-            }
+            },
+            (Some(ResponseResult::ListTransactions(_)), None) => SdkEvent::NWC {
+                details: NwcEvent::ListTransactions,
+            },
+            (Some(ResponseResult::GetBalance(_)), None) => SdkEvent::NWC {
+                details: NwcEvent::GetBalance,
+            },
             _ => {
                 warn!("Unexpected combination");
                 return Ok(());
             }
         };
-        notifier.send(event);
+        notifier.send(event)?;
         Ok(())
     }
 }
@@ -171,22 +159,29 @@ impl BreezNWCService<BreezRelayMessageHandler> {
 #[sdk_macros::async_trait]
 impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
     async fn create_connection_string(&self) -> Result<String> {
-        let connection_uri = self.nwc_connection_string.get_or_init(|| async {
-            let public_key = self.keys.public_key();
-            let relays = self.client.relays().await.keys().cloned().collect();
+        let connection_uri = self
+            .nwc_connection_string
+            .get_or_init(|| async {
+                let public_key = self.keys.public_key();
+                let relays = self.client.relays().await.keys().cloned().collect();
 
-            let mut random_bytes = [0u8; 32];
-            let mut rng = rand::thread_rng();
-            rng.fill_bytes(&mut random_bytes);
-            let random_secret_key = nostr_sdk::SecretKey::from_slice(&random_bytes).unwrap();
+                let mut random_bytes = [0u8; 32];
+                let mut rng = rand::thread_rng();
+                rng.fill_bytes(&mut random_bytes);
+                let random_secret_key = nostr_sdk::SecretKey::from_slice(&random_bytes).unwrap();
 
-            NostrWalletConnectURI::new(public_key, relays, random_secret_key, None)
-        }).await;
-        
+                NostrWalletConnectURI::new(public_key, relays, random_secret_key, None)
+            })
+            .await;
+
         Ok(connection_uri.to_string())
     }
 
-    fn start(&self, mut shutdown_receiver: watch::Receiver<()>, notifier: broadcast::Sender<SdkEvent>) {
+    fn start(
+        &self,
+        mut shutdown_receiver: watch::Receiver<()>,
+        notifier: broadcast::Sender<SdkEvent>,
+    ) {
         let client = self.client.clone();
         let handler = self.handler.clone();
         let keys = self.keys.clone();
@@ -236,14 +231,14 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                         };
 
                         let client_keys = Keys::new(connection_uri.secret.clone());
-                        
+
                         // Verify event pubkey matches expected pubkey
                         if event.pubkey != client_keys.public_key() {
-                            warn!("Event pubkey mismatch: expected {}, got {}", 
+                            warn!("Event pubkey mismatch: expected {}, got {}",
                                   client_keys.public_key(), event.pubkey);
                             continue;
                         }
-                        
+
                         // Verify the event signature and event id
                         if let Err(e) = event.verify() {
                             warn!("Event signature verification failed: {e:?}");
@@ -252,8 +247,8 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
 
                         // Decrypt the event content
                         let decrypted_content = match decrypt(
-                            &connection_uri.secret, 
-                            &event.pubkey, 
+                            &connection_uri.secret,
+                            &event.pubkey,
                             &event.content
                         ) {
                             Ok(content) => content,
