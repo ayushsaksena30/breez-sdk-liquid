@@ -4636,14 +4636,10 @@ impl LiquidSdk {
 
     pub async fn get_nwc_uri(&self) -> SdkResult<String> {
         match self.nwc_service.get() {
-            Some(nwc_service) => {
-                nwc_service
-                    .create_connection_string()
-                    .await
-                    .map_err(|e| SdkError::Generic {
-                        err: format!("Failed to create NWC connection string: {}", e)
-                    })
-            }
+            Some(nwc_service) =>
+                Ok(nwc_service
+                    .get_connection_string()
+                    .await),
             None => Err(SdkError::Generic {
                 err: "NWC service is not enabled. Set 'enable_nwc' to true in the Config to use NWC functionality".to_string()
             }),
