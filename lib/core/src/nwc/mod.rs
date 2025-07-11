@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use anyhow::Result;
 use bip39::rand::{self, RngCore};
 use handler::{BreezRelayMessageHandler, RelayMessageHandler};
@@ -9,7 +11,7 @@ use nostr_sdk::{
         ErrorCode, Method, NIP47Error, NostrWalletConnectURI, Request, RequestParams, Response,
         ResponseResult,
     },
-    Client as NostrClient, EventBuilder, Keys, Kind, RelayPoolNotification,
+    Client as NostrClient, EventBuilder, Filter, Keys, Kind, RelayPoolNotification, RelayUrl, Tag,
 };
 // use std::sync::Arc;
 use sdk_common::utils::Arc;
@@ -32,11 +34,7 @@ pub trait NWCService: MaybeSend + MaybeSync {
     /// Generates a unique connection URI that external applications can use
     /// to connect to this wallet service. The URI includes the wallet's public key,
     /// relay information, and a randomly generated secret for secure communication.
-    ///
-    /// # Returns
-    /// * `Ok(String)` - The connection string that clients can use
-    /// * `Err(anyhow::Error)` - Error generating the connection string
-    async fn create_connection_string(&self) -> Result<String>;
+    async fn get_connection_string(&self) -> String;
 
     /// Starts the NWC service event processing loop.
     ///
@@ -67,8 +65,8 @@ pub struct BreezNWCService<Handler: RelayMessageHandler> {
     keys: Keys,
     client: Arc<NostrClient>,
     handler: Arc<Handler>,
+    nwc_uri: NostrWalletConnectURI,
     event_loop_handle: OnceCell<JoinHandle<()>>,
-    nwc_connection_string: OnceCell<NostrWalletConnectURI>,
 }
 
 impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
@@ -90,14 +88,30 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
         for relay in relays {
             client.add_relay(relay).await?;
         }
+        let keys = Keys::generate();
+        let nwc_uri =
+            Self::new_connection_uri(&keys, client.relays().await.keys().cloned().collect())?;
 
         Ok(Self {
             client,
             handler,
-            keys: Keys::generate(),
+            keys,
+            nwc_uri,
             event_loop_handle: OnceCell::new(),
-            nwc_connection_string: OnceCell::new(),
         })
+    }
+
+    fn new_connection_uri(keys: &Keys, relays: Vec<RelayUrl>) -> Result<NostrWalletConnectURI> {
+        let mut random_bytes = [0u8; 32];
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut random_bytes);
+        let random_secret_key = nostr_sdk::SecretKey::from_slice(&random_bytes).unwrap();
+        Ok(NostrWalletConnectURI::new(
+            keys.public_key(),
+            relays,
+            random_secret_key,
+            None,
+        ))
     }
 }
 
@@ -158,23 +172,8 @@ impl BreezNWCService<BreezRelayMessageHandler> {
 
 #[sdk_macros::async_trait]
 impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
-    async fn create_connection_string(&self) -> Result<String> {
-        let connection_uri = self
-            .nwc_connection_string
-            .get_or_init(|| async {
-                let public_key = self.keys.public_key();
-                let relays = self.client.relays().await.keys().cloned().collect();
-
-                let mut random_bytes = [0u8; 32];
-                let mut rng = rand::thread_rng();
-                rng.fill_bytes(&mut random_bytes);
-                let random_secret_key = nostr_sdk::SecretKey::from_slice(&random_bytes).unwrap();
-
-                NostrWalletConnectURI::new(public_key, relays, random_secret_key, None)
-            })
-            .await;
-
-        Ok(connection_uri.to_string())
+    async fn get_connection_string(&self) -> String {
+        self.nwc_uri.to_string()
     }
 
     fn start(
@@ -184,11 +183,13 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
     ) {
         let client = self.client.clone();
         let handler = self.handler.clone();
-        let keys = self.keys.clone();
-        let nwc_connection_string = self.nwc_connection_string.clone();
+        let our_keys = self.keys.clone();
+        let client_keys = Keys::new(self.nwc_uri.secret.clone());
 
         let handle = platform_spawn(async move {
             client.connect().await;
+
+            info!("Successfully connected NWC client");
 
             // Broadcast info event
             let content = &[
@@ -200,13 +201,31 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
             .join(" ");
             if let Err(err) = Self::send_event(
                 EventBuilder::new(Kind::WalletConnectInfo, content),
-                &keys,
+                &our_keys,
                 client.clone(),
             )
             .await
             {
                 warn!("Could not send info event to relay pool: {err:?}");
             }
+
+            let sub_id = match client
+                .subscribe(
+                    Filter {
+                        authors: Some(BTreeSet::from([client_keys.public_key()])),
+                        kinds: Some(BTreeSet::from([Kind::WalletConnectRequest])),
+                        ..Default::default()
+                    },
+                    None,
+                )
+                .await
+            {
+                Ok(sub_id) => sub_id,
+                Err(err) => {
+                    warn!("Could not subscribe to relay notifications: {err:?}");
+                    return;
+                }
+            };
 
             let mut notifications_listener = client.notifications();
             loop {
@@ -218,19 +237,12 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                     }
 
                     Ok(notification) = notifications_listener.recv() => {
-                        let RelayPoolNotification::Event { event, .. } = notification else {
+                        let RelayPoolNotification::Event { event, subscription_id, .. } = notification else {
                             continue;
                         };
-
-                        let connection_uri = match nwc_connection_string.get() {
-                            Some(uri) => uri,
-                            None => {
-                                warn!("NWC connection not initialized, ignoring event");
-                                continue;
-                            }
-                        };
-
-                        let client_keys = Keys::new(connection_uri.secret.clone());
+                        if subscription_id != *sub_id.id() {
+                            continue;
+                        }
 
                         // Verify event pubkey matches expected pubkey
                         if event.pubkey != client_keys.public_key() {
@@ -247,8 +259,8 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
 
                         // Decrypt the event content
                         let decrypted_content = match decrypt(
-                            &connection_uri.secret,
-                            &event.pubkey,
+                            client_keys.secret_key(),
+                            &our_keys.public_key(),
                             &event.content
                         ) {
                             Ok(content) => content,
@@ -299,7 +311,12 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                             }
                         };
 
-                        if let Err(e) = Self::send_event(EventBuilder::new(Kind::WalletConnectResponse, content), &keys, client.clone()).await {
+                        let eb = EventBuilder::new(Kind::WalletConnectResponse, content)
+                            .tags([
+                                Tag::event(event.id),
+                                Tag::public_key(client_keys.public_key()),
+                            ]);
+                        if let Err(e) = Self::send_event(eb, &our_keys, client.clone()).await {
                             warn!("Could not send response event to relay pool: {e:?}");
                         }
                     },
