@@ -6,7 +6,7 @@ use handler::{BreezRelayMessageHandler, RelayMessageHandler};
 use log::{info, warn};
 use maybe_sync::{MaybeSend, MaybeSync};
 use nostr_sdk::{
-    nips::nip04::decrypt,
+    nips::nip04::{decrypt, encrypt},
     nips::nip47::{
         ErrorCode, Method, NIP47Error, NostrWalletConnectURI, Request, RequestParams, Response,
         ResponseResult,
@@ -244,6 +244,7 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                             continue;
                         }
 
+                        info!("Received NWC notification: {:?}", event);
                         // Verify event pubkey matches expected pubkey
                         if event.pubkey != client_keys.public_key() {
                             warn!("Event pubkey mismatch: expected {}, got {}",
@@ -259,8 +260,8 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
 
                         // Decrypt the event content
                         let decrypted_content = match decrypt(
-                            client_keys.secret_key(),
-                            &our_keys.public_key(),
+                            &our_keys.secret_key(),
+                            &client_keys.public_key(),
                             &event.content
                         ) {
                             Ok(content) => content,
@@ -269,6 +270,8 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                                 continue;
                             }
                         };
+
+                        info!("Decrypted NWC notification: {}", decrypted_content);
 
                         let req = match serde_json::from_str::<Request>(&decrypted_content) {
                             Ok(r) => r,
@@ -310,8 +313,21 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                                 continue;
                             }
                         };
+                        info!("NWC Response content: {}", content);
+                        info!("encrypting NWC response");
+                        let encrypted_content = match encrypt(
+                            &our_keys.secret_key(),
+                            &client_keys.public_key(),
+                            &content
+                        ) {
+                            Ok(encrypted) => encrypted,
+                            Err(e) => {
+                                warn!("Could not encrypt response content: {e:?}");
+                                continue;
+                            }
+                        };
 
-                        let eb = EventBuilder::new(Kind::WalletConnectResponse, content)
+                        let eb = EventBuilder::new(Kind::WalletConnectResponse, encrypted_content)
                             .tags([
                                 Tag::event(event.id),
                                 Tag::public_key(client_keys.public_key()),
@@ -319,6 +335,7 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                         if let Err(e) = Self::send_event(eb, &our_keys, client.clone()).await {
                             warn!("Could not send response event to relay pool: {e:?}");
                         }
+                        info!("sent encrypted NWC response");
                     },
                 }
             }
