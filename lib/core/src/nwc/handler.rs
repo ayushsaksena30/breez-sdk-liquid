@@ -2,6 +2,7 @@ use crate::model::{
     ListPaymentsRequest, PayAmount, Payment, PaymentDetails, PaymentState, PaymentType,
     PrepareSendRequest, SendPaymentRequest,
 };
+use log::{info, warn};
 use crate::sdk::LiquidSdk;
 use nostr_sdk::nips::nip47::{
     ErrorCode, GetBalanceResponse, ListTransactionsRequest, LookupInvoiceResponse, NIP47Error,
@@ -64,6 +65,7 @@ impl RelayMessageHandler for BreezRelayMessageHandler {
     /// * `Err(NIP47Error)` - Payment preparation or execution error
     async fn pay_invoice(&self, req: PayInvoiceRequest) -> Result<PayInvoiceResponse> {
         // Create prepare request
+        info!("NWC Pay invoice is called");
         let prepare_req = PrepareSendRequest {
             destination: req.invoice,
             amount: req.amount.map(|a| PayAmount::Bitcoin {
@@ -134,7 +136,7 @@ impl RelayMessageHandler for BreezRelayMessageHandler {
         req: ListTransactionsRequest,
     ) -> Result<Vec<LookupInvoiceResponse>> {
         let filters = req.transaction_type.map(|p| vec![p.into()]);
-
+        info!("NWC List transactions is called");
         let states = req
             .unpaid
             .map(|unpaid| {
@@ -205,6 +207,7 @@ impl RelayMessageHandler for BreezRelayMessageHandler {
     /// * `Ok(GetBalanceResponse)` - Balance in millisatoshis
     /// * `Err(NIP47Error)` - Error getting wallet info from the SDK
     async fn get_balance(&self) -> Result<GetBalanceResponse> {
+        info!("NWC Get balance is called");
         let info = self.sdk.get_info().await.map_err(|e| NIP47Error {
             code: ErrorCode::Internal,
             message: format!("Failed to get wallet info: {}", e),
