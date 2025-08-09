@@ -109,6 +109,7 @@ rusqlite = { git = "https://github.com/Spxg/rusqlite", rev = "8e53118a3e1807dc9a
     "bundled",
     "serialize",
 ] }
+wasm-bindgen-futures = "0.4.50"
 
 [dev-dependencies]
 sdk-common = { workspace = true, features = ["test-utils"] }
