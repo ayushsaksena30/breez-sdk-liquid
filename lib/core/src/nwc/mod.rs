@@ -52,7 +52,7 @@ pub trait NWCService: MaybeSend + MaybeSync {
     ///
     /// # Arguments
     /// * `shutdown_receiver` - Channel for receiving shutdown signals
-    /// * `notifier` - Broadcast sender for emitting SDK events
+    /// * `event_manager` - Event manager for emitting SDK events
     fn start(
         &self,
         shutdown_receiver: watch::Receiver<()>,
@@ -83,7 +83,6 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     /// and connects to the specified Nostr relays.
     ///
     /// # Arguments
-    /// * `secret_key` - The secret key for signing Nostr events
     /// * `handler` - Handler for processing relay messages
     /// * `relays` - List of relay URLs to connect to
     ///
