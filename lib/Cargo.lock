@@ -430,7 +430,7 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.26.2",
  "tokio-socks",
- "tokio-tungstenite 0.26.2",
+ "tokio-tungstenite",
  "url",
  "wasm-bindgen",
  "web-sys",
@@ -877,7 +877,6 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
- "tokio-tungstenite 0.21.0",
  "tokio_with_wasm",
  "tonic 0.12.3",
  "tonic 0.8.3",
@@ -5629,20 +5628,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c83b561d025642014097b66e6c1bb422783339e0909e4429cde4749d1990bc38"
-dependencies = [
- "futures-util",
- "log",
- "native-tls",
- "tokio",
- "tokio-native-tls",
- "tungstenite 0.21.0",
-]
-
-[[package]]
-name = "tokio-tungstenite"
 version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a9daff607c6d2bf6c16fd681ccb7eecc83e4e2cdc1ca067ffaadfca5de7f084"
@@ -5655,7 +5640,7 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
  "tokio-rustls 0.26.2",
- "tungstenite 0.26.2",
+ "tungstenite",
  "webpki-roots 0.26.11",
 ]
 
@@ -5674,7 +5659,7 @@ dependencies = [
  "native-tls",
  "thiserror 2.0.14",
  "tokio",
- "tokio-tungstenite 0.26.2",
+ "tokio-tungstenite",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -5969,26 +5954,6 @@ dependencies = [
  "quote",
  "serde_derive_internals",
  "syn 2.0.104",
-]
-
-[[package]]
-name = "tungstenite"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ef1a641ea34f399a848dea702823bbecfb4c486f911735368f1f137cb8257e1"
-dependencies = [
- "byteorder",
- "bytes",
- "data-encoding",
- "http 1.3.1",
- "httparse",
- "log",
- "native-tls",
- "rand 0.8.5",
- "sha1",
- "thiserror 1.0.69",
- "url",
- "utf-8",
 ]
 
 [[package]]

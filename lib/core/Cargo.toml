@@ -30,7 +30,6 @@ lwk_common = { git = "https://github.com/breez/lwk", rev = "c28d2a0dfc7b" }
 lwk_signer = { git = "https://github.com/breez/lwk", rev = "c28d2a0dfc7b", default-features = false }
 mockall = "0.13.1"
 tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
-tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 tokio_with_wasm = { version = "0.8.2", features = [
     "macros",
     "rt",

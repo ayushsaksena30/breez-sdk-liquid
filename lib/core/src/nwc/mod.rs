@@ -267,7 +267,6 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                                 payment_hash.clone().unwrap_or_default(),
                             ),
                             _ => {
-                                warn!("Payment details not available for NWC notification");
                                 continue;
                             }
                         };

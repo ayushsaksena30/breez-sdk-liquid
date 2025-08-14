@@ -581,7 +581,7 @@ impl LiquidSdk {
         }
 
         Ok(())
-    } //TODO: ADD NOSTR RELAY SERVICE (CALL self.nwcService.start(shutdown channel)), done.
+    }
 
     async fn ensure_is_started(&self) -> SdkResult<()> {
         let is_started = self.is_started.read().await;
