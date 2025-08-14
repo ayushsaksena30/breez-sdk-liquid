@@ -60,7 +60,7 @@ tempfile = "3"
 ecies = { version = "0.2.7", default-features = false, features = ["pure"] }
 semver = "1.0.23"
 lazy_static = "1.5.0"
-esplora-client = { git = "https://github.com/hydra-yse/rust-esplora-client", branch = "scripthash-utxo", features = [
+esplora-client = { git = "https://github.com/breez/rust-esplora-client", branch = "connect-timeout", features = [
     "async-https-rustls",
 ] }
 sideswap_api = { git = "https://github.com/breez/sideswap_rust", rev = "2c3c4312d8fe" }
@@ -78,7 +78,7 @@ maybe-sync = { version = "0.1.1", features = ["sync"] }
 prost = "^0.11"
 tonic = { version = "^0.8", features = ["tls", "tls-webpki-roots"] }
 uuid = { version = "1.8.0", features = ["v4"] }
-boltz-client = { git = "https://github.com/SatoshiPortal/boltz-rust", rev = "a51930a211110623f8354842d2ea1a961c598a79", features = [
+boltz-client = { git = "https://github.com/SatoshiPortal/boltz-rust", rev = "d62288fdd1799d90df72a811f4bb6a1b400c5ac7", features = [
     "electrum",
     "ws",
 ] }
@@ -100,7 +100,7 @@ tonic = { version = "0.12", default-features = false, features = [
     "codegen",
     "prost",
 ] }
-boltz-client = { git = "https://github.com/SatoshiPortal/boltz-rust", rev = "a51930a211110623f8354842d2ea1a961c598a79", features = [
+boltz-client = { git = "https://github.com/SatoshiPortal/boltz-rust", rev = "d62288fdd1799d90df72a811f4bb6a1b400c5ac7", features = [
     "ws",
 ] }
 rusqlite = { git = "https://github.com/Spxg/rusqlite", rev = "8e53118a3e1807dc9a9f59c5969fdff7e0416400", features = [

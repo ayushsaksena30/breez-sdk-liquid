@@ -3907,6 +3907,11 @@ impl LiquidSdk {
         mut recoverable_swaps: Vec<Swap>,
         chain_tips: ChainTips,
     ) -> Result<()> {
+        debug!("LiquidSdk::sync_payments_with_chain_data: start");
+        debug!(
+            "LiquidSdk::sync_payments_with_chain_data: called with {} recoverable swaps",
+            recoverable_swaps.len()
+        );
         let mut wallet_tx_map = self
             .recoverer
             .recover_from_onchain(&mut recoverable_swaps, Some(chain_tips))
@@ -3995,6 +4000,10 @@ impl LiquidSdk {
             .map(|tx| (tx.tx_id.clone(), tx))
             .collect::<HashMap<String, PaymentTxData>>();
 
+        debug!(
+            "Found {} unconfirmed payment txs",
+            unconfirmed_txs_by_id.len()
+        );
         for tx in non_swap_wallet_tx_map.values() {
             let tx_id = tx.txid.to_string();
             let maybe_payment = payments.get(&tx_id);
@@ -4031,6 +4040,10 @@ impl LiquidSdk {
             .map(|(_, tx)| tx)
             .collect();
 
+        debug!(
+            "Found {} unknown unconfirmed txs",
+            unknown_unconfirmed_txs.len()
+        );
         for unknown_unconfirmed_tx in unknown_unconfirmed_txs {
             if unknown_unconfirmed_tx.timestamp.is_some_and(|t| {
                 (utils::now().saturating_sub(t)) > NETWORK_PROPAGATION_GRACE_PERIOD.as_secs() as u32
@@ -4051,6 +4064,7 @@ impl LiquidSdk {
         }
 
         self.update_wallet_info().await?;
+        debug!("LiquidSdk::sync_payments_with_chain_data: end");
         Ok(())
     }
 
@@ -4427,6 +4441,10 @@ impl LiquidSdk {
         recoverable_swaps: Vec<Swap>,
         chain_tips: ChainTips,
     ) -> SdkResult<()> {
+        debug!(
+            "LiquidSdk::sync_inner called with {} recoverable swaps",
+            recoverable_swaps.len()
+        );
         self.ensure_is_started().await?;
 
         let t0 = Instant::now();
