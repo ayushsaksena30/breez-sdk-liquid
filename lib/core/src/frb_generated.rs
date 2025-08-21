@@ -679,6 +679,51 @@ fn wire__crate__bindings__BindingLiquidSdk_get_info_impl(
         },
     )
 }
+fn wire__crate__bindings__BindingLiquidSdk_get_nwc_uri_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    that: impl CstDecode<
+        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BindingLiquidSdk>>,
+    >,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::DcoCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "BindingLiquidSdk_get_nwc_uri",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.cst_decode();
+            move |context| async move {
+                transform_result_dco::<_, _, crate::error::SdkError>(
+                    (move || async move {
+                        let mut api_that_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                    &api_that, 0, false,
+                                )],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => {
+                                    api_that_guard =
+                                        Some(api_that.lockable_decode_async_ref().await)
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_that_guard = api_that_guard.unwrap();
+                        let output_ok =
+                            crate::bindings::BindingLiquidSdk::get_nwc_uri(&*api_that_guard)
+                                .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__bindings__BindingLiquidSdk_get_payment_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     that: impl CstDecode<
@@ -2805,7 +2850,6 @@ impl SseDecode for crate::model::Config {
         let mut var_assetMetadata =
             <Option<Vec<crate::model::AssetMetadata>>>::sse_decode(deserializer);
         let mut var_sideswapApiKey = <Option<String>>::sse_decode(deserializer);
-        let mut var_enableNwc = <Option<bool>>::sse_decode(deserializer);
         let mut var_useMagicRoutingHints = <bool>::sse_decode(deserializer);
         let mut var_nwcOptions = <Option<crate::model::NwcOptions>>::sse_decode(deserializer);
         return crate::model::Config {
@@ -2822,8 +2866,6 @@ impl SseDecode for crate::model::Config {
             onchain_fee_rate_leeway_sat: var_onchainFeeRateLeewaySat,
             asset_metadata: var_assetMetadata,
             sideswap_api_key: var_sideswapApiKey,
-            enable_nwc: var_enableNwc,
-            nwc_relay_urls: None,
             use_magic_routing_hints: var_useMagicRoutingHints,
             nwc_options: var_nwcOptions,
         };
@@ -10799,8 +10841,6 @@ mod io {
                 onchain_fee_rate_leeway_sat: self.onchain_fee_rate_leeway_sat.cst_decode(),
                 asset_metadata: self.asset_metadata.cst_decode(),
                 sideswap_api_key: self.sideswap_api_key.cst_decode(),
-                enable_nwc: self.enable_nwc.cst_decode(),
-                nwc_relay_urls: None,
                 use_magic_routing_hints: self.use_magic_routing_hints.cst_decode(),
                 nwc_options: self.nwc_options.cst_decode(),
             }
@@ -12623,7 +12663,6 @@ mod io {
                 onchain_fee_rate_leeway_sat: core::ptr::null_mut(),
                 asset_metadata: core::ptr::null_mut(),
                 sideswap_api_key: core::ptr::null_mut(),
-                enable_nwc: core::ptr::null_mut(),
                 use_magic_routing_hints: Default::default(),
                 nwc_options: core::ptr::null_mut(),
             }
@@ -13923,6 +13962,14 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(
+        port_: i64,
+        that: usize,
+    ) {
+        wire__crate__bindings__BindingLiquidSdk_get_nwc_uri_impl(port_, that)
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_payment(
         port_: i64,
         that: usize,
@@ -15073,7 +15120,6 @@ mod io {
         onchain_fee_rate_leeway_sat: *mut u64,
         asset_metadata: *mut wire_cst_list_asset_metadata,
         sideswap_api_key: *mut wire_cst_list_prim_u_8_strict,
-        enable_nwc: *mut bool,
         use_magic_routing_hints: bool,
         nwc_options: *mut wire_cst_nwc_options,
     }

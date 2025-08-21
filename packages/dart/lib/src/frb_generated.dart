@@ -113,6 +113,8 @@ abstract class RustLibApi extends BaseApi {
 
   Future<GetInfoResponse> crateBindingsBindingLiquidSdkGetInfo({required BindingLiquidSdk that});
 
+  Future<String> crateBindingsBindingLiquidSdkGetNwcUri({required BindingLiquidSdk that});
+
   Future<Payment?> crateBindingsBindingLiquidSdkGetPayment({
     required BindingLiquidSdk that,
     required GetPaymentRequest req,
@@ -623,6 +625,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateBindingsBindingLiquidSdkGetInfoConstMeta =>
       const TaskConstMeta(debugName: "BindingLiquidSdk_get_info", argNames: ["that"]);
+
+  @override
+  Future<String> crateBindingsBindingLiquidSdkGetNwcUri({required BindingLiquidSdk that}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
+                that,
+              );
+          return wire.wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(port_, arg0);
+        },
+        codec: DcoCodec(decodeSuccessData: dco_decode_String, decodeErrorData: dco_decode_sdk_error),
+        constMeta: kCrateBindingsBindingLiquidSdkGetNwcUriConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateBindingsBindingLiquidSdkGetNwcUriConstMeta =>
+      const TaskConstMeta(debugName: "BindingLiquidSdk_get_nwc_uri", argNames: ["that"]);
 
   @override
   Future<Payment?> crateBindingsBindingLiquidSdkGetPayment({
@@ -8658,6 +8682,8 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
   }) => RustLib.instance.api.crateBindingsBindingLiquidSdkFetchPaymentProposedFees(that: this, req: req);
 
   Future<GetInfoResponse> getInfo() => RustLib.instance.api.crateBindingsBindingLiquidSdkGetInfo(that: this);
+
+  Future<String> getNwcUri() => RustLib.instance.api.crateBindingsBindingLiquidSdkGetNwcUri(that: this);
 
   Future<Payment?> getPayment({required GetPaymentRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkGetPayment(that: this, req: req);
