@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, str::FromStr as _};
 
-use crate::event::EventManager;
+use crate::{event::EventManager, nwc::persist::NwcDetails, persist::Persister, utils};
 use anyhow::Result;
 use bip39::rand::{self, RngCore};
 use handler::{BreezRelayMessageHandler, RelayMessageHandler};
@@ -24,6 +24,7 @@ use tokio_with_wasm::alias as tokio;
 use crate::model::{NwcEvent, SdkEvent};
 
 pub(crate) mod handler;
+mod persist;
 
 #[sdk_macros::async_trait]
 pub trait NWCService: MaybeSend + MaybeSync {
@@ -62,6 +63,7 @@ pub struct BreezNWCService<Handler: RelayMessageHandler> {
     keys: Keys,
     handler: Arc<Handler>,
     nwc_uri: NostrWalletConnectURI,
+    persister: Arc<Persister>,
     event_manager: Arc<EventManager>,
     client: std::sync::Arc<NostrClient>,
     event_loop_handle: OnceCell<JoinHandle<()>>,
@@ -83,6 +85,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     pub(crate) async fn new(
         handler: Arc<Handler>,
         relays: &[String],
+        persister: Arc<Persister>,
         event_manager: Arc<EventManager>,
     ) -> Result<Self> {
         let client = std::sync::Arc::new(NostrClient::default());
@@ -96,25 +99,44 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             .iter()
             .filter_map(|r| RelayUrl::from_str(r).ok())
             .collect();
-        let nwc_uri = Self::new_connection_uri(&keys, relays)?;
+        let nwc_uri = Self::get_connection_uri(&persister, keys.public_key, relays)?;
 
         Ok(Self {
             client,
             handler,
             keys,
             nwc_uri,
+            persister,
             event_manager,
             event_loop_handle: OnceCell::new(),
         })
     }
 
-    fn new_connection_uri(keys: &Keys, relays: Vec<RelayUrl>) -> Result<NostrWalletConnectURI> {
+    fn get_connection_uri(
+        p: &Persister,
+        our_pubkey: nostr_sdk::key::PublicKey,
+        relays: Vec<RelayUrl>,
+    ) -> Result<NostrWalletConnectURI> {
+        if let Ok(Some(details)) = p.get_nwc_details() {
+            if utils::now() <= details.expiry {
+                if let Ok(uri) = NostrWalletConnectURI::from_str(&details.uri) {
+                    return Ok(uri);
+                }
+            }
+        }
+        Self::new_connection_uri(our_pubkey, relays)
+    }
+
+    fn new_connection_uri(
+        our_pubkey: nostr_sdk::key::PublicKey,
+        relays: Vec<RelayUrl>,
+    ) -> Result<NostrWalletConnectURI> {
         let mut random_bytes = [0u8; 32];
         let mut rng = rand::thread_rng();
         rng.fill_bytes(&mut random_bytes);
         let random_secret_key = nostr_sdk::SecretKey::from_slice(&random_bytes).unwrap();
         Ok(NostrWalletConnectURI::new(
-            keys.public_key(),
+            our_pubkey,
             relays,
             random_secret_key,
             None,
@@ -440,6 +462,12 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
 
     async fn stop(self) {
         self.client.disconnect().await;
+        if let Err(e) = self.persister.set_nwc_details(NwcDetails {
+            uri: self.nwc_uri.to_string(),
+            expiry: utils::now() + 3600, // one hour
+        }) {
+            warn!("Could not persist NWC details: {e:?}");
+        }
         if let Some(handle) = self.event_loop_handle.get() {
             handle.abort();
         }

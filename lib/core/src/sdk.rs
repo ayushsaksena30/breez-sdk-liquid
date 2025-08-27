@@ -392,10 +392,11 @@ impl LiquidSdkBuilder {
             None => match self.config.enable_nwc.unwrap_or(false) {
                 false => None,
                 true => {
-                    let nwc_service: Arc<dyn NWCService> = sdk_common::utils::Arc::new(
+                    let nwc_service: Arc<dyn NWCService> = Arc::new(
                         BreezNWCService::new(
-                            sdk_common::utils::Arc::new(BreezRelayMessageHandler::new(sdk.clone())),
+                            Arc::new(BreezRelayMessageHandler::new(sdk.clone())),
                             &self.config.nwc_relays(),
+                            sdk.persister.clone(),
                             sdk.event_manager.clone(),
                         )
                         .await?,
