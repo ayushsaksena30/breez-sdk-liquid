@@ -5047,7 +5047,7 @@ impl LiquidSdk {
                     .get_connection_string()
                     .await),
             None => Err(SdkError::Generic {
-                err: "NWC service is not enabled. Set 'enable_nwc' to true in the Config to use NWC functionality".to_string()
+                err: "NWC service is not enabled. Set 'nwc_options.enabled' to true in the Config to use NWC functionality".to_string()
             }),
         }
     }

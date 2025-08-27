@@ -66,9 +66,9 @@ pub struct BreezNWCService<Handler: RelayMessageHandler> {
     config: Config,
     handler: Arc<Handler>,
     nwc_uri: NostrWalletConnectURI,
-    persister: Arc<Persister>,
     event_manager: Arc<EventManager>,
     client: std::sync::Arc<NostrClient>,
+    persister: std::sync::Arc<Persister>,
     event_loop_handle: OnceCell<JoinHandle<()>>,
 }
 
@@ -88,7 +88,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     pub(crate) async fn new(
         handler: Arc<Handler>,
         config: Config,
-        persister: Arc<Persister>,
+        persister: std::sync::Arc<Persister>,
         event_manager: Arc<EventManager>,
     ) -> Result<Self> {
         let client = std::sync::Arc::new(NostrClient::default());
@@ -507,7 +507,6 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
             }
         });
 
-        #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
         let _ = self.event_loop_handle.set(handle);
     }
 
