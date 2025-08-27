@@ -3,7 +3,7 @@ use std::{collections::BTreeSet, str::FromStr as _};
 use crate::{
     event::EventManager, model::Config, nwc::persist::NwcDetails, persist::Persister, utils,
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bip39::rand::{self, RngCore};
 use handler::{BreezRelayMessageHandler, RelayMessageHandler};
 use log::{info, warn};
@@ -63,6 +63,7 @@ pub trait NWCService: MaybeSend + MaybeSync {
 
 pub struct BreezNWCService<Handler: RelayMessageHandler> {
     keys: Keys,
+    config: Config,
     handler: Arc<Handler>,
     nwc_uri: NostrWalletConnectURI,
     persister: Arc<Persister>,
@@ -96,17 +97,8 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             client.add_relay(relay).await?;
         }
 
-        let keys = match config
-            .nwc_options
-            .context("Expected NWC options to be present")?
-            .secret_key
-        {
-            Some(secret_key) => Keys::parse(&secret_key)?,
-            None => {
-                let mut rng = rand::thread_rng();
-                Keys::generate_with_rng(&mut rng)
-            }
-        };
+        let secret_key = Self::get_secret_key(&config, &persister);
+        let keys = Keys::parse(&secret_key)?;
 
         let relays = relays
             .iter()
@@ -116,6 +108,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
 
         Ok(Self {
             client,
+            config,
             handler,
             keys,
             nwc_uri,
@@ -123,6 +116,29 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             event_manager,
             event_loop_handle: OnceCell::new(),
         })
+    }
+
+    fn get_secret_key(config: &Config, p: &Persister) -> String {
+        // If we have a key from the configuration, use it
+        if let Some(key) = config
+            .nwc_options
+            .as_ref()
+            .and_then(|opts| opts.secret_key.clone())
+        {
+            return key;
+        }
+
+        // Otherwise, try restoring it from the previous session
+        if let Ok(Some(NwcDetails {
+            our_seckey: Some(key),
+            ..
+        })) = p.get_nwc_details()
+        {
+            return key;
+        }
+
+        // If none exists, generate a new one
+        nostr_sdk::key::SecretKey::generate().to_secret_hex()
     }
 
     fn get_connection_uri(
@@ -154,6 +170,28 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             random_secret_key,
             None,
         ))
+    }
+
+    fn save_session(&self) {
+        let our_seckey = match self
+            .config
+            .nwc_options
+            .as_ref()
+            .is_some_and(|opt| opt.secret_key.is_some())
+        {
+            // If we already have a key in the config, don't persist it
+            true => None,
+            // If not, we need to save the secret key to restore the session later
+            false => Some(self.keys.secret_key().to_secret_hex()),
+        };
+
+        if let Err(e) = self.persister.set_nwc_details(NwcDetails {
+            uri: self.nwc_uri.to_string(),
+            expiry: utils::now() + 3600, // one hour
+            our_seckey,
+        }) {
+            warn!("Could not persist NWC details: {e:?}");
+        }
     }
 }
 
@@ -475,12 +513,7 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
 
     async fn stop(self) {
         self.client.disconnect().await;
-        if let Err(e) = self.persister.set_nwc_details(NwcDetails {
-            uri: self.nwc_uri.to_string(),
-            expiry: utils::now() + 3600, // one hour
-        }) {
-            warn!("Could not persist NWC details: {e:?}");
-        }
+        self.save_session();
         if let Some(handle) = self.event_loop_handle.get() {
             handle.abort();
         }

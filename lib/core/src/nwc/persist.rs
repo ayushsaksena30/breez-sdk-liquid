@@ -8,6 +8,7 @@ const KEY_NWC_DETAILS: &str = "nwc_details";
 pub(crate) struct NwcDetails {
     pub uri: String,
     pub expiry: u32,
+    pub our_seckey: Option<String>,
 }
 
 impl Persister {
