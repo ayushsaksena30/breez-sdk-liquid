@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, str::FromStr as _};
 
-use anyhow::Result;
 use crate::event::EventManager;
+use anyhow::Result;
 use bip39::rand::{self, RngCore};
 use handler::{BreezRelayMessageHandler, RelayMessageHandler};
 use log::{info, warn};
@@ -19,12 +19,7 @@ use nostr_sdk::{
 use sdk_common::utils::Arc;
 use tokio::sync::{watch, OnceCell};
 use tokio::task::JoinHandle;
-
-#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
-use tokio::task::spawn as platform_spawn;
-
-#[cfg(all(target_family = "wasm", target_os = "unknown"))]
-use wasm_bindgen_futures::spawn_local as platform_spawn;
+use tokio_with_wasm::alias as tokio;
 
 use crate::model::{NwcEvent, SdkEvent};
 
@@ -53,11 +48,7 @@ pub trait NWCService: MaybeSend + MaybeSync {
     /// # Arguments
     /// * `shutdown_receiver` - Channel for receiving shutdown signals
     /// * `event_manager` - Event manager for emitting SDK events
-    fn start(
-        &self,
-        shutdown_receiver: watch::Receiver<()>,
-        event_manager: Arc<EventManager>,
-    );
+    fn start(&self, shutdown_receiver: watch::Receiver<()>, event_manager: Arc<EventManager>);
 
     /// Stops the NWC service and performs cleanup.
     ///
@@ -189,18 +180,14 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
         self.nwc_uri.to_string()
     }
 
-    fn start(
-        &self,
-        mut shutdown_receiver: watch::Receiver<()>,
-        event_manager: Arc<EventManager>,
-    ) {
+    fn start(&self, mut shutdown_receiver: watch::Receiver<()>, event_manager: Arc<EventManager>) {
         let client = self.client.clone();
         let handler = self.handler.clone();
         let our_keys = self.keys.clone();
         let client_keys = Keys::new(self.nwc_uri.secret.clone());
 
         let mut listener = event_manager.subscribe();
-        let handle = platform_spawn(async move {
+        let handle = tokio::task::spawn(async move {
             client.connect().await;
 
             info!("Successfully connected NWC client");
