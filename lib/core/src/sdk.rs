@@ -79,8 +79,8 @@ use self::sync::client::BreezSyncerClient;
 use self::sync::SyncService;
 
 pub const DEFAULT_DATA_DIR: &str = ".data";
-/// Number of blocks to monitor a swap after its timeout block height
-pub const CHAIN_SWAP_MONITORING_PERIOD_BITCOIN_BLOCKS: u32 = 4320;
+/// Number of blocks to monitor a swap after its timeout block height (~14 days)
+pub const CHAIN_SWAP_MONITORING_PERIOD_BITCOIN_BLOCKS: u32 = 6 * 24 * 14; // ~blocks/hour * hours/day * n_days
 
 /// A list of external input parsers that are used by default.
 /// To opt-out, set `use_default_external_input_parsers` in [Config] to false.
@@ -1465,6 +1465,7 @@ impl LiquidSdk {
                                 let to_asset = AssetId::from_str(&to_asset)?;
                                 let from_asset = AssetId::from_str(&from_asset)?;
                                 let swap = SideSwapService::from_sdk(self)
+                                    .await
                                     .get_asset_swap(from_asset, to_asset, receiver_amount_sat)
                                     .await?;
                                 validate_funds = false;
@@ -2087,7 +2088,7 @@ impl LiquidSdk {
 
         self.persister.insert_or_update_payment(
             tx_data.clone(),
-            &[tx_balance.clone()],
+            std::slice::from_ref(&tx_balance),
             Some(PaymentTxDetails {
                 tx_id: tx_id.clone(),
                 destination: destination.clone(),
@@ -2147,7 +2148,7 @@ impl LiquidSdk {
             PaymentError::generic(format!("Could not convert destination address: {err}"))
         })?;
 
-        let sideswap_service = SideSwapService::from_sdk(self);
+        let sideswap_service = SideSwapService::from_sdk(self).await;
 
         let swap = sideswap_service
             .get_asset_swap(from_asset, to_asset, receiver_amount_sat)
@@ -2247,7 +2248,7 @@ impl LiquidSdk {
 
         self.persister.insert_or_update_payment(
             tx_data.clone(),
-            &[tx_balance.clone()],
+            std::slice::from_ref(&tx_balance),
             Some(PaymentTxDetails {
                 tx_id: tx_id.clone(),
                 destination: destination.clone(),
@@ -3731,7 +3732,7 @@ impl LiquidSdk {
     ///
     /// Since it bypasses the monitoring period, this should be called rarely or when the caller
     /// expects there is a very old refundable chain swap. Otherwise, for relatively recent swaps
-    /// (within last [CHAIN_SWAP_MONITORING_PERIOD_BITCOIN_BLOCKS] blocks = ~30 days), calling this
+    /// (within last [CHAIN_SWAP_MONITORING_PERIOD_BITCOIN_BLOCKS] blocks = ~14 days), calling this
     /// is not necessary as it happens automatically in the background.
     pub async fn rescan_onchain_swaps(&self) -> SdkResult<()> {
         let t0 = Instant::now();
