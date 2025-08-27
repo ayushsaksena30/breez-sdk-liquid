@@ -112,7 +112,7 @@ impl RelayMessageHandler for BreezRelayMessageHandler {
                 message: "Payment did not return any preimage".to_string(),
             });
         };
-        
+
         let fees_paid = response.payment.fees_sat * 1000; // Convert sats to msats
 
         Ok(PayInvoiceResponse {

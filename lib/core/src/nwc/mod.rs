@@ -47,8 +47,7 @@ pub trait NWCService: MaybeSend + MaybeSync {
     ///
     /// # Arguments
     /// * `shutdown_receiver` - Channel for receiving shutdown signals
-    /// * `event_manager` - Event manager for emitting SDK events
-    fn start(&self, shutdown_receiver: watch::Receiver<()>, event_manager: Arc<EventManager>);
+    fn start(&self, shutdown_receiver: watch::Receiver<()>);
 
     /// Stops the NWC service and performs cleanup.
     ///
@@ -63,6 +62,7 @@ pub struct BreezNWCService<Handler: RelayMessageHandler> {
     keys: Keys,
     handler: Arc<Handler>,
     nwc_uri: NostrWalletConnectURI,
+    event_manager: Arc<EventManager>,
     client: std::sync::Arc<NostrClient>,
     event_loop_handle: OnceCell<JoinHandle<()>>,
 }
@@ -80,7 +80,11 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     /// # Returns
     /// * `Ok(BreezNWCService)` - Successfully initialized service
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
-    pub(crate) async fn new(handler: Arc<Handler>, relays: &[String]) -> Result<Self> {
+    pub(crate) async fn new(
+        handler: Arc<Handler>,
+        relays: &[String],
+        event_manager: Arc<EventManager>,
+    ) -> Result<Self> {
         let client = std::sync::Arc::new(NostrClient::default());
         for relay in relays {
             client.add_relay(relay).await?;
@@ -99,6 +103,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             handler,
             keys,
             nwc_uri,
+            event_manager,
             event_loop_handle: OnceCell::new(),
         })
     }
@@ -180,13 +185,14 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
         self.nwc_uri.to_string()
     }
 
-    fn start(&self, mut shutdown_receiver: watch::Receiver<()>, event_manager: Arc<EventManager>) {
+    fn start(&self, mut shutdown_receiver: watch::Receiver<()>) {
         let client = self.client.clone();
         let handler = self.handler.clone();
+        let event_manager = self.event_manager.clone();
         let our_keys = self.keys.clone();
         let client_keys = Keys::new(self.nwc_uri.secret.clone());
 
-        let mut listener = event_manager.subscribe();
+        let mut listener = self.event_manager.subscribe();
         let handle = tokio::task::spawn(async move {
             client.connect().await;
 

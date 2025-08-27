@@ -396,6 +396,7 @@ impl LiquidSdkBuilder {
                         BreezNWCService::new(
                             sdk_common::utils::Arc::new(BreezRelayMessageHandler::new(sdk.clone())),
                             &self.config.nwc_relays(),
+                            sdk.event_manager.clone(),
                         )
                         .await?,
                     );
@@ -559,10 +560,7 @@ impl LiquidSdk {
             });
         }
         if let Some(nwc_service) = self.nwc_service.get() {
-            nwc_service.start(
-                self.shutdown_receiver.clone(),
-                self.event_manager.clone(), 
-            );
+            nwc_service.start(self.shutdown_receiver.clone());
         }
 
         handles.push(TaskHandle {
