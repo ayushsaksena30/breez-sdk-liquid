@@ -5133,14 +5133,14 @@ class RustLibWire implements BaseWire {
   RustLibWire.fromLookup(ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName) lookup)
     : _lookup = lookup;
 
-  void store_dart_post_cobject(int ptr) {
+  void store_dart_post_cobject(DartPostCObjectFnType ptr) {
     return _store_dart_post_cobject(ptr);
   }
 
-  late final _store_dart_post_cobjectPtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int)>>(
-    'store_dart_post_cobject',
-  );
-  late final _store_dart_post_cobject = _store_dart_post_cobjectPtr.asFunction<void Function(int)>();
+  late final _store_dart_post_cobjectPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(DartPostCObjectFnType)>>('store_dart_post_cobject');
+  late final _store_dart_post_cobject =
+      _store_dart_post_cobjectPtr.asFunction<void Function(DartPostCObjectFnType)>();
 
   void wire__crate__bindings__BindingLiquidSdk_accept_payment_proposed_fees(
     int port_,
@@ -6010,16 +6010,16 @@ class RustLibWire implements BaseWire {
       _cst_new_box_autoadd_bitcoin_address_dataPtr
           .asFunction<ffi.Pointer<wire_cst_bitcoin_address_data> Function()>();
 
-  ffi.Pointer<bool> cst_new_box_autoadd_bool(ffi.Pointer<bool> value) {
+  ffi.Pointer<ffi.Bool> cst_new_box_autoadd_bool(bool value) {
     return _cst_new_box_autoadd_bool(value);
   }
 
   late final _cst_new_box_autoadd_boolPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<bool> Function(ffi.Pointer<bool>)>>(
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Bool> Function(ffi.Bool)>>(
         'frbgen_breez_liquid_cst_new_box_autoadd_bool',
       );
   late final _cst_new_box_autoadd_bool =
-      _cst_new_box_autoadd_boolPtr.asFunction<ffi.Pointer<bool> Function(ffi.Pointer<bool>)>();
+      _cst_new_box_autoadd_boolPtr.asFunction<ffi.Pointer<ffi.Bool> Function(bool)>();
 
   ffi.Pointer<wire_cst_buy_bitcoin_request> cst_new_box_autoadd_buy_bitcoin_request() {
     return _cst_new_box_autoadd_buy_bitcoin_request();
@@ -6815,7 +6815,10 @@ class RustLibWire implements BaseWire {
 
 typedef DartPort = ffi.Int64;
 typedef DartDartPort = int;
-typedef bool = ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Int>)>;
+typedef DartPostCObjectFnTypeFunction = ffi.Bool Function(DartPort port_id, ffi.Pointer<ffi.Void> message);
+typedef DartDartPostCObjectFnTypeFunction =
+    bool Function(DartDartPort port_id, ffi.Pointer<ffi.Void> message);
+typedef DartPostCObjectFnType = ffi.Pointer<ffi.NativeFunction<DartPostCObjectFnTypeFunction>>;
 
 final class wire_cst_list_prim_u_8_strict extends ffi.Struct {
   external ffi.Pointer<ffi.Uint8> ptr;
@@ -6953,7 +6956,7 @@ final class wire_cst_list_payments_request extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_payment_details> details;
 
-  external ffi.Pointer<bool> sort_ascending;
+  external ffi.Pointer<ffi.Bool> sort_ascending;
 }
 
 final class wire_cst_ln_url_auth_request_data extends ffi.Struct {
@@ -7163,6 +7166,7 @@ final class wire_cst_ln_url_pay_request_data extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> domain;
 
+  @ffi.Bool()
   external bool allows_nostr;
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> nostr_pubkey;
@@ -7181,7 +7185,7 @@ final class wire_cst_PayAmount_Asset extends ffi.Struct {
   @ffi.Double()
   external double receiver_amount;
 
-  external ffi.Pointer<bool> estimate_asset_fees;
+  external ffi.Pointer<ffi.Bool> estimate_asset_fees;
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> from_asset;
 }
@@ -7224,6 +7228,7 @@ final class wire_cst_url_success_action_data extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> url;
 
+  @ffi.Bool()
   external bool matches_callback_domain;
 }
 
@@ -7322,7 +7327,7 @@ final class wire_cst_prepare_ln_url_pay_request extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> comment;
 
-  external ffi.Pointer<bool> validate_success_action_url;
+  external ffi.Pointer<ffi.Bool> validate_success_action_url;
 }
 
 final class wire_cst_prepare_pay_onchain_request extends ffi.Struct {
@@ -7398,7 +7403,7 @@ final class wire_cst_receive_payment_request extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> description;
 
-  external ffi.Pointer<bool> use_description_hash;
+  external ffi.Pointer<ffi.Bool> use_description_hash;
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> payer_note;
 }
@@ -7431,7 +7436,7 @@ final class wire_cst_prepare_send_response extends ffi.Struct {
 final class wire_cst_send_payment_request extends ffi.Struct {
   external wire_cst_prepare_send_response prepare_response;
 
-  external ffi.Pointer<bool> use_asset_fees;
+  external ffi.Pointer<ffi.Bool> use_asset_fees;
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> payer_note;
 }
@@ -7579,6 +7584,7 @@ final class wire_cst_PaymentDetails_Bitcoin extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> description;
 
+  @ffi.Bool()
   external bool auto_accepted_fees;
 
   external ffi.Pointer<ffi.Uint32> liquid_expiration_blockheight;
@@ -7669,6 +7675,7 @@ final class wire_cst_SdkEvent_PaymentWaitingFeeAcceptance extends ffi.Struct {
 }
 
 final class wire_cst_SdkEvent_DataSynced extends ffi.Struct {
+  @ffi.Bool()
   external bool did_pull_new_records;
 }
 
@@ -7736,6 +7743,7 @@ final class wire_cst_BlockchainExplorer_Electrum extends ffi.Struct {
 final class wire_cst_BlockchainExplorer_Esplora extends ffi.Struct {
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> url;
 
+  @ffi.Bool()
   external bool use_waterfalls;
 }
 
@@ -7817,6 +7825,7 @@ final class wire_cst_config extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_external_input_parser> external_input_parsers;
 
+  @ffi.Bool()
   external bool use_default_external_input_parsers;
 
   external ffi.Pointer<ffi.Uint64> onchain_fee_rate_leeway_sat;
@@ -7825,6 +7834,7 @@ final class wire_cst_config extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> sideswap_api_key;
 
+  @ffi.Bool()
   external bool use_magic_routing_hints;
 
   external ffi.Pointer<wire_cst_nwc_options> nwc_options;
@@ -7886,7 +7896,7 @@ final class wire_cst_symbol extends ffi.Struct {
 
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> template_;
 
-  external ffi.Pointer<bool> rtl;
+  external ffi.Pointer<ffi.Bool> rtl;
 
   external ffi.Pointer<ffi.Uint32> position;
 }
@@ -8031,6 +8041,7 @@ final class wire_cst_blockchain_info extends ffi.Struct {
 }
 
 final class wire_cst_check_message_response extends ffi.Struct {
+  @ffi.Bool()
   external bool is_valid;
 }
 
