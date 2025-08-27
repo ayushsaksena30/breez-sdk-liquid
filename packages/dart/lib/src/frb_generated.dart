@@ -1828,6 +1828,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NWCOptions dco_decode_box_autoadd_nwc_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_nwc_options(raw);
+  }
+
+  @protected
   PayAmount dco_decode_box_autoadd_pay_amount(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_pay_amount(raw);
@@ -2000,7 +2006,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Config dco_decode_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 16) throw Exception('unexpected arr length: expect 16 but see ${arr.length}');
+    if (arr.length != 15) throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
     return Config(
       liquidExplorer: dco_decode_blockchain_explorer(arr[0]),
       bitcoinExplorer: dco_decode_blockchain_explorer(arr[1]),
@@ -2016,8 +2022,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       assetMetadata: dco_decode_opt_list_asset_metadata(arr[11]),
       sideswapApiKey: dco_decode_opt_String(arr[12]),
       useMagicRoutingHints: dco_decode_bool(arr[13]),
-      enableNwc: dco_decode_opt_box_autoadd_bool(arr[14]),
-      nwcRelayUrls: dco_decode_opt_list_String(arr[15]),
+      nwcOptions: dco_decode_opt_box_autoadd_nwc_options(arr[14]),
     );
   }
 
@@ -2704,6 +2709,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NWCOptions dco_decode_nwc_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return NWCOptions(
+      enabled: dco_decode_bool(arr[0]),
+      relayUrls: dco_decode_opt_list_String(arr[1]),
+      secretKey: dco_decode_opt_String(arr[2]),
+    );
+  }
+
+  @protected
   OnchainPaymentLimitsResponse dco_decode_onchain_payment_limits_response(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -2757,6 +2774,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   LnUrlInfo? dco_decode_opt_box_autoadd_ln_url_info(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_ln_url_info(raw);
+  }
+
+  @protected
+  NWCOptions? dco_decode_opt_box_autoadd_nwc_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_nwc_options(raw);
   }
 
   @protected
@@ -3954,6 +3977,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NWCOptions sse_decode_box_autoadd_nwc_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_nwc_options(deserializer));
+  }
+
+  @protected
   PayAmount sse_decode_box_autoadd_pay_amount(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_pay_amount(deserializer));
@@ -4133,8 +4162,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_assetMetadata = sse_decode_opt_list_asset_metadata(deserializer);
     var var_sideswapApiKey = sse_decode_opt_String(deserializer);
     var var_useMagicRoutingHints = sse_decode_bool(deserializer);
-    var var_enableNwc = sse_decode_opt_box_autoadd_bool(deserializer);
-    var var_nwcRelayUrls = sse_decode_opt_list_String(deserializer);
+    var var_nwcOptions = sse_decode_opt_box_autoadd_nwc_options(deserializer);
     return Config(
       liquidExplorer: var_liquidExplorer,
       bitcoinExplorer: var_bitcoinExplorer,
@@ -4150,8 +4178,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       assetMetadata: var_assetMetadata,
       sideswapApiKey: var_sideswapApiKey,
       useMagicRoutingHints: var_useMagicRoutingHints,
-      enableNwc: var_enableNwc,
-      nwcRelayUrls: var_nwcRelayUrls,
+      nwcOptions: var_nwcOptions,
     );
   }
 
@@ -5016,6 +5043,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NWCOptions sse_decode_nwc_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_enabled = sse_decode_bool(deserializer);
+    var var_relayUrls = sse_decode_opt_list_String(deserializer);
+    var var_secretKey = sse_decode_opt_String(deserializer);
+    return NWCOptions(enabled: var_enabled, relayUrls: var_relayUrls, secretKey: var_secretKey);
+  }
+
+  @protected
   OnchainPaymentLimitsResponse sse_decode_onchain_payment_limits_response(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_send = sse_decode_limits(deserializer);
@@ -5106,6 +5142,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_box_autoadd_ln_url_info(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  NWCOptions? sse_decode_opt_box_autoadd_nwc_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_nwc_options(deserializer));
     } else {
       return null;
     }
@@ -6559,6 +6606,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_nwc_options(NWCOptions self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_nwc_options(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_pay_amount(PayAmount self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_pay_amount(self, serializer);
@@ -6746,8 +6799,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_list_asset_metadata(self.assetMetadata, serializer);
     sse_encode_opt_String(self.sideswapApiKey, serializer);
     sse_encode_bool(self.useMagicRoutingHints, serializer);
-    sse_encode_opt_box_autoadd_bool(self.enableNwc, serializer);
-    sse_encode_opt_list_String(self.nwcRelayUrls, serializer);
+    sse_encode_opt_box_autoadd_nwc_options(self.nwcOptions, serializer);
   }
 
   @protected
@@ -7417,6 +7469,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_nwc_options(NWCOptions self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.enabled, serializer);
+    sse_encode_opt_list_String(self.relayUrls, serializer);
+    sse_encode_opt_String(self.secretKey, serializer);
+  }
+
+  @protected
   void sse_encode_onchain_payment_limits_response(
     OnchainPaymentLimitsResponse self,
     SseSerializer serializer,
@@ -7503,6 +7563,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_ln_url_info(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_nwc_options(NWCOptions? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_nwc_options(self, serializer);
     }
   }
 

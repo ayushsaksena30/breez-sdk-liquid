@@ -433,7 +433,6 @@ fun asConfig(config: ReadableMap): Config? {
                 "paymentTimeoutSec",
                 "useDefaultExternalInputParsers",
                 "useMagicRoutingHints",
-                "enableNwc",
             ),
         )
     ) {
@@ -487,8 +486,7 @@ fun asConfig(config: ReadableMap): Config? {
             null
         }
     val sideswapApiKey = if (hasNonNullKey(config, "sideswapApiKey")) config.getString("sideswapApiKey") else null
-    val enableNwc = config.getBoolean("enableNwc")
-    val nwcRelayUrls = if (hasNonNullKey(config, "nwcRelayUrls")) config.getArray("nwcRelayUrls")?.let { asStringList(it) } else null
+    val nwcOptions = if (hasNonNullKey(config, "nwcOptions")) config.getMap("nwcOptions")?.let { asNwcOptions(it) } else null
     return Config(
         liquidExplorer,
         bitcoinExplorer,
@@ -504,8 +502,7 @@ fun asConfig(config: ReadableMap): Config? {
         onchainFeeRateLeewaySat,
         assetMetadata,
         sideswapApiKey,
-        enableNwc,
-        nwcRelayUrls,
+        nwcOptions,
     )
 }
 
@@ -525,8 +522,7 @@ fun readableMapOf(config: Config): ReadableMap =
         "onchainFeeRateLeewaySat" to config.onchainFeeRateLeewaySat,
         "assetMetadata" to config.assetMetadata?.let { readableArrayOf(it) },
         "sideswapApiKey" to config.sideswapApiKey,
-        "enableNwc" to config.enableNwc,
-        "nwcRelayUrls" to config.nwcRelayUrls?.let { readableArrayOf(it) },
+        "nwcOptions" to config.nwcOptions?.let { readableMapOf(it) },
     )
 
 fun asConfigList(arr: ReadableArray): List<Config> {
@@ -1757,6 +1753,40 @@ fun asMessageSuccessActionDataList(arr: ReadableArray): List<MessageSuccessActio
     for (value in arr.toList()) {
         when (value) {
             is ReadableMap -> list.add(asMessageSuccessActionData(value)!!)
+            else -> throw SdkException.Generic(errUnexpectedType(value))
+        }
+    }
+    return list
+}
+
+fun asNwcOptions(nwcOptions: ReadableMap): NwcOptions? {
+    if (!validateMandatoryFields(
+            nwcOptions,
+            arrayOf(
+                "enabled",
+            ),
+        )
+    ) {
+        return null
+    }
+    val enabled = nwcOptions.getBoolean("enabled")
+    val relayUrls = if (hasNonNullKey(nwcOptions, "relayUrls")) nwcOptions.getArray("relayUrls")?.let { asStringList(it) } else null
+    val secretKey = if (hasNonNullKey(nwcOptions, "secretKey")) nwcOptions.getString("secretKey") else null
+    return NwcOptions(enabled, relayUrls, secretKey)
+}
+
+fun readableMapOf(nwcOptions: NwcOptions): ReadableMap =
+    readableMapOf(
+        "enabled" to nwcOptions.enabled,
+        "relayUrls" to nwcOptions.relayUrls?.let { readableArrayOf(it) },
+        "secretKey" to nwcOptions.secretKey,
+    )
+
+fun asNwcOptionsList(arr: ReadableArray): List<NwcOptions> {
+    val list = ArrayList<NwcOptions>()
+    for (value in arr.toList()) {
+        when (value) {
+            is ReadableMap -> list.add(asNwcOptions(value)!!)
             else -> throw SdkException.Generic(errUnexpectedType(value))
         }
     }

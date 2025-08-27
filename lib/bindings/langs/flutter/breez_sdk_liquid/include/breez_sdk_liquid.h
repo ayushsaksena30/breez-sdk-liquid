@@ -728,6 +728,12 @@ typedef struct wire_cst_list_asset_metadata {
   int32_t len;
 } wire_cst_list_asset_metadata;
 
+typedef struct wire_cst_nwc_options {
+  bool enabled;
+  struct wire_cst_list_String *relay_urls;
+  struct wire_cst_list_prim_u_8_strict *secret_key;
+} wire_cst_nwc_options;
+
 typedef struct wire_cst_config {
   struct wire_cst_blockchain_explorer liquid_explorer;
   struct wire_cst_blockchain_explorer bitcoin_explorer;
@@ -743,8 +749,7 @@ typedef struct wire_cst_config {
   struct wire_cst_list_asset_metadata *asset_metadata;
   struct wire_cst_list_prim_u_8_strict *sideswap_api_key;
   bool use_magic_routing_hints;
-  bool *enable_nwc;
-  struct wire_cst_list_String *nwc_relay_urls;
+  struct wire_cst_nwc_options *nwc_options;
 } wire_cst_config;
 
 typedef struct wire_cst_connect_request {
@@ -1504,6 +1509,8 @@ struct wire_cst_message_success_action_data *frbgen_breez_liquid_cst_new_box_aut
 
 struct wire_cst_nwc_event *frbgen_breez_liquid_cst_new_box_autoadd_nwc_event(void);
 
+struct wire_cst_nwc_options *frbgen_breez_liquid_cst_new_box_autoadd_nwc_options(void);
+
 struct wire_cst_pay_amount *frbgen_breez_liquid_cst_new_box_autoadd_pay_amount(void);
 
 struct wire_cst_pay_onchain_request *frbgen_breez_liquid_cst_new_box_autoadd_pay_onchain_request(void);
@@ -1616,6 +1623,7 @@ static int64_t dummy_method_to_enforce_bundling(void) {
     dummy_var ^= ((int64_t) (void*) frbgen_breez_liquid_cst_new_box_autoadd_ln_url_withdraw_success_data);
     dummy_var ^= ((int64_t) (void*) frbgen_breez_liquid_cst_new_box_autoadd_message_success_action_data);
     dummy_var ^= ((int64_t) (void*) frbgen_breez_liquid_cst_new_box_autoadd_nwc_event);
+    dummy_var ^= ((int64_t) (void*) frbgen_breez_liquid_cst_new_box_autoadd_nwc_options);
     dummy_var ^= ((int64_t) (void*) frbgen_breez_liquid_cst_new_box_autoadd_pay_amount);
     dummy_var ^= ((int64_t) (void*) frbgen_breez_liquid_cst_new_box_autoadd_pay_onchain_request);
     dummy_var ^= ((int64_t) (void*) frbgen_breez_liquid_cst_new_box_autoadd_payment);

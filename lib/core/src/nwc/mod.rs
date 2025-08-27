@@ -1,7 +1,9 @@
 use std::{collections::BTreeSet, str::FromStr as _};
 
-use crate::{event::EventManager, nwc::persist::NwcDetails, persist::Persister, utils};
-use anyhow::Result;
+use crate::{
+    event::EventManager, model::Config, nwc::persist::NwcDetails, persist::Persister, utils,
+};
+use anyhow::{Context, Result};
 use bip39::rand::{self, RngCore};
 use handler::{BreezRelayMessageHandler, RelayMessageHandler};
 use log::{info, warn};
@@ -84,16 +86,27 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
     pub(crate) async fn new(
         handler: Arc<Handler>,
-        relays: &[String],
+        config: Config,
         persister: Arc<Persister>,
         event_manager: Arc<EventManager>,
     ) -> Result<Self> {
         let client = std::sync::Arc::new(NostrClient::default());
-        for relay in relays {
+        let relays = config.nwc_relays();
+        for relay in &relays {
             client.add_relay(relay).await?;
         }
-        let mut rng = rand::thread_rng();
-        let keys = Keys::generate_with_rng(&mut rng);
+
+        let keys = match config
+            .nwc_options
+            .context("Expected NWC options to be present")?
+            .secret_key
+        {
+            Some(secret_key) => Keys::parse(&secret_key)?,
+            None => {
+                let mut rng = rand::thread_rng();
+                Keys::generate_with_rng(&mut rng)
+            }
+        };
 
         let relays = relays
             .iter()

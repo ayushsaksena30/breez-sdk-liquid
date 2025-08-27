@@ -59,6 +59,17 @@ pub enum BlockchainExplorer {
     },
 }
 
+/// Configuration for the NWC service
+#[derive(Clone, Debug, Serialize, Default)]
+pub struct NWCOptions {
+    // Whether or not to enable the Nostr Wallet Connect service
+    pub enabled: bool,
+    /// A list of Nostr relay URLs for NWC connections. If None, default relays will be used.
+    pub relay_urls: Option<Vec<String>>,
+    /// The secret key used by the wallet node. If None, it will be regenerated at each expiry.
+    pub secret_key: Option<String>,
+}
+
 /// Configuration for the Liquid SDK
 #[derive(Clone, Debug, Serialize)]
 pub struct Config {
@@ -103,10 +114,9 @@ pub struct Config {
     pub sideswap_api_key: Option<String>,
     /// Set this to false to disable the use of Magic Routing Hints (MRH) to send payments. Enabled by default.
     pub use_magic_routing_hints: bool,
-    // Whether or not to enable Nostr Wallet Connect
-    pub enable_nwc: Option<bool>,
-    /// A list of Nostr relay URLs for NWC connections. If None, default relays will be used.
-    pub nwc_relay_urls: Option<Vec<String>>,
+    /// The configuration options for the NWC service. If None, the service will be disabled.
+    /// For further information, see [NWCOptions]
+    pub nwc_options: Option<NWCOptions>,
 }
 
 impl Config {
@@ -131,8 +141,7 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
-            enable_nwc: Some(false),
-            nwc_relay_urls: None,
+            nwc_options: None,
         }
     }
 
@@ -158,8 +167,7 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
-            enable_nwc: Some(false),
-            nwc_relay_urls: None,
+            nwc_options: None,
         }
     }
 
@@ -184,8 +192,7 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
-            enable_nwc: Some(false),
-            nwc_relay_urls: None,
+            nwc_options: None,
         }
     }
 
@@ -211,8 +218,7 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: Some(SIDESWAP_API_KEY.to_string()),
             use_magic_routing_hints: true,
-            enable_nwc: Some(false),
-            nwc_relay_urls: None,
+            nwc_options: None,
         }
     }
 
@@ -237,8 +243,7 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: None,
             use_magic_routing_hints: true,
-            enable_nwc: Some(false),
-            nwc_relay_urls: None,
+            nwc_options: None,
         }
     }
 
@@ -264,8 +269,7 @@ impl Config {
             asset_metadata: None,
             sideswap_api_key: None,
             use_magic_routing_hints: true,
-            enable_nwc: Some(false),
-            nwc_relay_urls: None,
+            nwc_options: None,
         }
     }
 
@@ -387,8 +391,12 @@ impl Config {
     }
 
     pub(crate) fn nwc_relays(&self) -> Vec<String> {
-        match &self.nwc_relay_urls {
-            Some(relays) => relays.clone(),
+        match self
+            .nwc_options
+            .as_ref()
+            .and_then(|options| options.relay_urls.clone())
+        {
+            Some(relays) => relays,
             None => vec![
                 "wss://relay.damus.io".to_string(),
                 "wss://nostr-pub.wellorder.net".to_string(),

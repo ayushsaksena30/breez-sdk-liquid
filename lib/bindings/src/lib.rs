@@ -130,6 +130,10 @@ impl BindingLiquidSdk {
         rt().block_on(self.sdk.receive_payment(&req))
     }
 
+    pub fn get_nwc_uri(&self) -> Result<String, SdkError> {
+        rt().block_on(self.sdk.get_nwc_uri())
+    }
+
     pub fn create_bolt12_invoice(
         &self,
         req: CreateBolt12InvoiceRequest,

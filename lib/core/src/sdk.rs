@@ -389,13 +389,18 @@ impl LiquidSdkBuilder {
 
         let nwc_service = match self.nwc_service.clone() {
             Some(nwc_service) => Some(nwc_service),
-            None => match self.config.enable_nwc.unwrap_or(false) {
+            None => match self
+                .config
+                .nwc_options
+                .as_ref()
+                .is_some_and(|opt| opt.enabled)
+            {
                 false => None,
                 true => {
                     let nwc_service: Arc<dyn NWCService> = Arc::new(
                         BreezNWCService::new(
                             Arc::new(BreezRelayMessageHandler::new(sdk.clone())),
-                            &self.config.nwc_relays(),
+                            sdk.config.clone(),
                             sdk.persister.clone(),
                             sdk.event_manager.clone(),
                         )

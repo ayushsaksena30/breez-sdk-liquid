@@ -2686,8 +2686,7 @@ impl SseDecode for crate::model::Config {
             <Option<Vec<crate::model::AssetMetadata>>>::sse_decode(deserializer);
         let mut var_sideswapApiKey = <Option<String>>::sse_decode(deserializer);
         let mut var_useMagicRoutingHints = <bool>::sse_decode(deserializer);
-        let mut var_enableNwc = <Option<bool>>::sse_decode(deserializer);
-        let mut var_nwcRelayUrls = <Option<Vec<String>>>::sse_decode(deserializer);
+        let mut var_nwcOptions = <Option<crate::model::NWCOptions>>::sse_decode(deserializer);
         return crate::model::Config {
             liquid_explorer: var_liquidExplorer,
             bitcoin_explorer: var_bitcoinExplorer,
@@ -2703,8 +2702,7 @@ impl SseDecode for crate::model::Config {
             asset_metadata: var_assetMetadata,
             sideswap_api_key: var_sideswapApiKey,
             use_magic_routing_hints: var_useMagicRoutingHints,
-            enable_nwc: var_enableNwc,
-            nwc_relay_urls: var_nwcRelayUrls,
+            nwc_options: var_nwcOptions,
         };
     }
 }
@@ -3794,6 +3792,20 @@ impl SseDecode for crate::model::NwcEvent {
     }
 }
 
+impl SseDecode for crate::model::NWCOptions {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_enabled = <bool>::sse_decode(deserializer);
+        let mut var_relayUrls = <Option<Vec<String>>>::sse_decode(deserializer);
+        let mut var_secretKey = <Option<String>>::sse_decode(deserializer);
+        return crate::model::NWCOptions {
+            enabled: var_enabled,
+            relay_urls: var_relayUrls,
+            secret_key: var_secretKey,
+        };
+    }
+}
+
 impl SseDecode for crate::model::OnchainPaymentLimitsResponse {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -3888,6 +3900,17 @@ impl SseDecode for Option<crate::model::LnUrlInfo> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<crate::model::LnUrlInfo>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::model::NWCOptions> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::model::NWCOptions>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -5451,8 +5474,7 @@ impl flutter_rust_bridge::IntoDart for crate::model::Config {
             self.asset_metadata.into_into_dart().into_dart(),
             self.sideswap_api_key.into_into_dart().into_dart(),
             self.use_magic_routing_hints.into_into_dart().into_dart(),
-            self.enable_nwc.into_into_dart().into_dart(),
-            self.nwc_relay_urls.into_into_dart().into_dart(),
+            self.nwc_options.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -6507,6 +6529,23 @@ impl flutter_rust_bridge::IntoDart for crate::model::NwcEvent {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::model::NwcEvent {}
 impl flutter_rust_bridge::IntoIntoDart<crate::model::NwcEvent> for crate::model::NwcEvent {
     fn into_into_dart(self) -> crate::model::NwcEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::model::NWCOptions {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.enabled.into_into_dart().into_dart(),
+            self.relay_urls.into_into_dart().into_dart(),
+            self.secret_key.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::model::NWCOptions {}
+impl flutter_rust_bridge::IntoIntoDart<crate::model::NWCOptions> for crate::model::NWCOptions {
+    fn into_into_dart(self) -> crate::model::NWCOptions {
         self
     }
 }
@@ -7920,8 +7959,7 @@ impl SseEncode for crate::model::Config {
         <Option<Vec<crate::model::AssetMetadata>>>::sse_encode(self.asset_metadata, serializer);
         <Option<String>>::sse_encode(self.sideswap_api_key, serializer);
         <bool>::sse_encode(self.use_magic_routing_hints, serializer);
-        <Option<bool>>::sse_encode(self.enable_nwc, serializer);
-        <Option<Vec<String>>>::sse_encode(self.nwc_relay_urls, serializer);
+        <Option<crate::model::NWCOptions>>::sse_encode(self.nwc_options, serializer);
     }
 }
 
@@ -8764,6 +8802,15 @@ impl SseEncode for crate::model::NwcEvent {
     }
 }
 
+impl SseEncode for crate::model::NWCOptions {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.enabled, serializer);
+        <Option<Vec<String>>>::sse_encode(self.relay_urls, serializer);
+        <Option<String>>::sse_encode(self.secret_key, serializer);
+    }
+}
+
 impl SseEncode for crate::model::OnchainPaymentLimitsResponse {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -8848,6 +8895,16 @@ impl SseEncode for Option<crate::model::LnUrlInfo> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <crate::model::LnUrlInfo>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::model::NWCOptions> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::model::NWCOptions>::sse_encode(value, serializer);
         }
     }
 }
@@ -10285,6 +10342,13 @@ mod io {
             CstDecode::<crate::model::NwcEvent>::cst_decode(*wrap).into()
         }
     }
+    impl CstDecode<crate::model::NWCOptions> for *mut wire_cst_nwc_options {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::model::NWCOptions {
+            let wrap = unsafe { flutter_rust_bridge::for_generated::box_from_leak_ptr(self) };
+            CstDecode::<crate::model::NWCOptions>::cst_decode(*wrap).into()
+        }
+    }
     impl CstDecode<crate::model::PayAmount> for *mut wire_cst_pay_amount {
         // Codec=Cst (C-struct based), see doc to use other codecs
         fn cst_decode(self) -> crate::model::PayAmount {
@@ -10488,8 +10552,7 @@ mod io {
                 asset_metadata: self.asset_metadata.cst_decode(),
                 sideswap_api_key: self.sideswap_api_key.cst_decode(),
                 use_magic_routing_hints: self.use_magic_routing_hints.cst_decode(),
-                enable_nwc: self.enable_nwc.cst_decode(),
-                nwc_relay_urls: self.nwc_relay_urls.cst_decode(),
+                nwc_options: self.nwc_options.cst_decode(),
             }
         }
     }
@@ -11343,6 +11406,16 @@ mod io {
                 3 => crate::model::NwcEvent::ListTransactions,
                 4 => crate::model::NwcEvent::GetBalance,
                 _ => unreachable!(),
+            }
+        }
+    }
+    impl CstDecode<crate::model::NWCOptions> for wire_cst_nwc_options {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::model::NWCOptions {
+            crate::model::NWCOptions {
+                enabled: self.enabled.cst_decode(),
+                relay_urls: self.relay_urls.cst_decode(),
+                secret_key: self.secret_key.cst_decode(),
             }
         }
     }
@@ -12274,8 +12347,7 @@ mod io {
                 asset_metadata: core::ptr::null_mut(),
                 sideswap_api_key: core::ptr::null_mut(),
                 use_magic_routing_hints: Default::default(),
-                enable_nwc: core::ptr::null_mut(),
-                nwc_relay_urls: core::ptr::null_mut(),
+                nwc_options: core::ptr::null_mut(),
             }
         }
     }
@@ -12850,6 +12922,20 @@ mod io {
         }
     }
     impl Default for wire_cst_nwc_event {
+        fn default() -> Self {
+            Self::new_with_null_ptr()
+        }
+    }
+    impl NewWithNullPtr for wire_cst_nwc_options {
+        fn new_with_null_ptr() -> Self {
+            Self {
+                enabled: Default::default(),
+                relay_urls: core::ptr::null_mut(),
+                secret_key: core::ptr::null_mut(),
+            }
+        }
+    }
+    impl Default for wire_cst_nwc_options {
         fn default() -> Self {
             Self::new_with_null_ptr()
         }
@@ -14083,6 +14169,14 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_breez_liquid_cst_new_box_autoadd_nwc_options(
+    ) -> *mut wire_cst_nwc_options {
+        flutter_rust_bridge::for_generated::new_leak_box_ptr(
+            wire_cst_nwc_options::new_with_null_ptr(),
+        )
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_breez_liquid_cst_new_box_autoadd_pay_amount(
     ) -> *mut wire_cst_pay_amount {
         flutter_rust_bridge::for_generated::new_leak_box_ptr(
@@ -14632,8 +14726,7 @@ mod io {
         asset_metadata: *mut wire_cst_list_asset_metadata,
         sideswap_api_key: *mut wire_cst_list_prim_u_8_strict,
         use_magic_routing_hints: bool,
-        enable_nwc: *mut bool,
-        nwc_relay_urls: *mut wire_cst_list_String,
+        nwc_options: *mut wire_cst_nwc_options,
     }
     #[repr(C)]
     #[derive(Clone, Copy)]
@@ -15334,6 +15427,13 @@ mod io {
         preimage: *mut wire_cst_list_prim_u_8_strict,
         fees_sat: *mut u64,
         error: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_nwc_options {
+        enabled: bool,
+        relay_urls: *mut wire_cst_list_String,
+        secret_key: *mut wire_cst_list_prim_u_8_strict,
     }
     #[repr(C)]
     #[derive(Clone, Copy)]

@@ -104,8 +104,7 @@ export interface Config {
     onchainFeeRateLeewaySat?: number
     assetMetadata?: AssetMetadata[]
     sideswapApiKey?: string
-    enableNwc: boolean
-    nwcRelayUrls?: string[]
+    nwcOptions?: NwcOptions
 }
 
 export interface ConnectRequest {
@@ -310,6 +309,12 @@ export interface LogEntry {
 
 export interface MessageSuccessActionData {
     message: string
+}
+
+export interface NwcOptions {
+    enabled: boolean
+    relayUrls?: string[]
+    secretKey?: string
 }
 
 export interface OnchainPaymentLimitsResponse {

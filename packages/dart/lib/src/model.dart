@@ -304,10 +304,10 @@ class Config {
 
   /// Set this to false to disable the use of Magic Routing Hints (MRH) to send payments. Enabled by default.
   final bool useMagicRoutingHints;
-  final bool? enableNwc;
 
-  /// A list of Nostr relay URLs for NWC connections. If None, default relays will be used.
-  final List<String>? nwcRelayUrls;
+  /// The configuration options for the NWC service. If None, the service will be disabled.
+  /// For further information, see [NWCOptions]
+  final NWCOptions? nwcOptions;
 
   const Config({
     required this.liquidExplorer,
@@ -324,8 +324,7 @@ class Config {
     this.assetMetadata,
     this.sideswapApiKey,
     required this.useMagicRoutingHints,
-    this.enableNwc,
-    this.nwcRelayUrls,
+    this.nwcOptions,
   });
 
   @override
@@ -344,8 +343,7 @@ class Config {
       assetMetadata.hashCode ^
       sideswapApiKey.hashCode ^
       useMagicRoutingHints.hashCode ^
-      enableNwc.hashCode ^
-      nwcRelayUrls.hashCode;
+      nwcOptions.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -366,8 +364,7 @@ class Config {
           assetMetadata == other.assetMetadata &&
           sideswapApiKey == other.sideswapApiKey &&
           useMagicRoutingHints == other.useMagicRoutingHints &&
-          enableNwc == other.enableNwc &&
-          nwcRelayUrls == other.nwcRelayUrls;
+          nwcOptions == other.nwcOptions;
 }
 
 /// An argument when calling [crate::sdk::LiquidSdk::connect].
@@ -768,6 +765,31 @@ sealed class NwcEvent with _$NwcEvent {
   }) = NwcEvent_PayInvoice;
   const factory NwcEvent.listTransactions() = NwcEvent_ListTransactions;
   const factory NwcEvent.getBalance() = NwcEvent_GetBalance;
+}
+
+/// Configuration for the NWC service
+class NWCOptions {
+  final bool enabled;
+
+  /// A list of Nostr relay URLs for NWC connections. If None, default relays will be used.
+  final List<String>? relayUrls;
+
+  /// The secret key used by the wallet node. If None, it will be regenerated at each expiry.
+  final String? secretKey;
+
+  const NWCOptions({required this.enabled, this.relayUrls, this.secretKey});
+
+  @override
+  int get hashCode => enabled.hashCode ^ relayUrls.hashCode ^ secretKey.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NWCOptions &&
+          runtimeType == other.runtimeType &&
+          enabled == other.enabled &&
+          relayUrls == other.relayUrls &&
+          secretKey == other.secretKey;
 }
 
 /// Returned when calling [crate::sdk::LiquidSdk::fetch_onchain_limits].

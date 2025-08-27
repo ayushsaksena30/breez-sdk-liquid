@@ -580,18 +580,12 @@ enum BreezSDKLiquidMapper {
             }
             sideswapApiKey = sideswapApiKeyTmp
         }
-        guard let enableNwc = config["enableNwc"] as? Bool else {
-            throw SdkError.Generic(message: errMissingMandatoryField(fieldName: "enableNwc", typeName: "Config"))
-        }
-        var nwcRelayUrls: [String]?
-        if hasNonNilKey(data: config, key: "nwcRelayUrls") {
-            guard let nwcRelayUrlsTmp = config["nwcRelayUrls"] as? [String] else {
-                throw SdkError.Generic(message: errUnexpectedValue(fieldName: "nwcRelayUrls"))
-            }
-            nwcRelayUrls = nwcRelayUrlsTmp
+        var nwcOptions: NwcOptions?
+        if let nwcOptionsTmp = config["nwcOptions"] as? [String: Any?] {
+            nwcOptions = try asNwcOptions(nwcOptions: nwcOptionsTmp)
         }
 
-        return Config(liquidExplorer: liquidExplorer, bitcoinExplorer: bitcoinExplorer, workingDir: workingDir, network: network, paymentTimeoutSec: paymentTimeoutSec, syncServiceUrl: syncServiceUrl, breezApiKey: breezApiKey, zeroConfMaxAmountSat: zeroConfMaxAmountSat, useDefaultExternalInputParsers: useDefaultExternalInputParsers, useMagicRoutingHints: useMagicRoutingHints, externalInputParsers: externalInputParsers, onchainFeeRateLeewaySat: onchainFeeRateLeewaySat, assetMetadata: assetMetadata, sideswapApiKey: sideswapApiKey, enableNwc: enableNwc, nwcRelayUrls: nwcRelayUrls)
+        return Config(liquidExplorer: liquidExplorer, bitcoinExplorer: bitcoinExplorer, workingDir: workingDir, network: network, paymentTimeoutSec: paymentTimeoutSec, syncServiceUrl: syncServiceUrl, breezApiKey: breezApiKey, zeroConfMaxAmountSat: zeroConfMaxAmountSat, useDefaultExternalInputParsers: useDefaultExternalInputParsers, useMagicRoutingHints: useMagicRoutingHints, externalInputParsers: externalInputParsers, onchainFeeRateLeewaySat: onchainFeeRateLeewaySat, assetMetadata: assetMetadata, sideswapApiKey: sideswapApiKey, nwcOptions: nwcOptions)
     }
 
     static func dictionaryOf(config: Config) -> [String: Any?] {
@@ -610,8 +604,7 @@ enum BreezSDKLiquidMapper {
             "onchainFeeRateLeewaySat": config.onchainFeeRateLeewaySat == nil ? nil : config.onchainFeeRateLeewaySat,
             "assetMetadata": config.assetMetadata == nil ? nil : arrayOf(assetMetadataList: config.assetMetadata!),
             "sideswapApiKey": config.sideswapApiKey == nil ? nil : config.sideswapApiKey,
-            "enableNwc": config.enableNwc,
-            "nwcRelayUrls": config.nwcRelayUrls == nil ? nil : config.nwcRelayUrls,
+            "nwcOptions": config.nwcOptions == nil ? nil : dictionaryOf(nwcOptions: config.nwcOptions!),
         ]
     }
 
@@ -2080,6 +2073,53 @@ enum BreezSDKLiquidMapper {
 
     static func arrayOf(messageSuccessActionDataList: [MessageSuccessActionData]) -> [Any] {
         return messageSuccessActionDataList.map { v -> [String: Any?] in return dictionaryOf(messageSuccessActionData: v) }
+    }
+
+    static func asNwcOptions(nwcOptions: [String: Any?]) throws -> NwcOptions {
+        guard let enabled = nwcOptions["enabled"] as? Bool else {
+            throw SdkError.Generic(message: errMissingMandatoryField(fieldName: "enabled", typeName: "NwcOptions"))
+        }
+        var relayUrls: [String]?
+        if hasNonNilKey(data: nwcOptions, key: "relayUrls") {
+            guard let relayUrlsTmp = nwcOptions["relayUrls"] as? [String] else {
+                throw SdkError.Generic(message: errUnexpectedValue(fieldName: "relayUrls"))
+            }
+            relayUrls = relayUrlsTmp
+        }
+        var secretKey: String?
+        if hasNonNilKey(data: nwcOptions, key: "secretKey") {
+            guard let secretKeyTmp = nwcOptions["secretKey"] as? String else {
+                throw SdkError.Generic(message: errUnexpectedValue(fieldName: "secretKey"))
+            }
+            secretKey = secretKeyTmp
+        }
+
+        return NwcOptions(enabled: enabled, relayUrls: relayUrls, secretKey: secretKey)
+    }
+
+    static func dictionaryOf(nwcOptions: NwcOptions) -> [String: Any?] {
+        return [
+            "enabled": nwcOptions.enabled,
+            "relayUrls": nwcOptions.relayUrls == nil ? nil : nwcOptions.relayUrls,
+            "secretKey": nwcOptions.secretKey == nil ? nil : nwcOptions.secretKey,
+        ]
+    }
+
+    static func asNwcOptionsList(arr: [Any]) throws -> [NwcOptions] {
+        var list = [NwcOptions]()
+        for value in arr {
+            if let val = value as? [String: Any?] {
+                var nwcOptions = try asNwcOptions(nwcOptions: val)
+                list.append(nwcOptions)
+            } else {
+                throw SdkError.Generic(message: errUnexpectedType(typeName: "NwcOptions"))
+            }
+        }
+        return list
+    }
+
+    static func arrayOf(nwcOptionsList: [NwcOptions]) -> [Any] {
+        return nwcOptionsList.map { v -> [String: Any?] in return dictionaryOf(nwcOptions: v) }
     }
 
     static func asOnchainPaymentLimitsResponse(onchainPaymentLimitsResponse: [String: Any?]) throws -> OnchainPaymentLimitsResponse {
