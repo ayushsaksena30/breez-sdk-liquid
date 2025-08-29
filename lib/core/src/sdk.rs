@@ -397,15 +397,13 @@ impl LiquidSdkBuilder {
             {
                 false => None,
                 true => {
-                    let nwc_service: Arc<dyn NWCService> = Arc::new(
-                        BreezNWCService::new(
-                            Arc::new(BreezRelayMessageHandler::new(sdk.clone())),
-                            sdk.config.clone(),
-                            sdk.persister.clone(),
-                            sdk.event_manager.clone(),
-                        )
-                        .await?,
-                    );
+                    let nwc_service: Arc<dyn NWCService> = BreezNWCService::new(
+                        Box::new(BreezRelayMessageHandler::new(sdk.clone())),
+                        sdk.config.clone(),
+                        sdk.persister.clone(),
+                        sdk.event_manager.clone(),
+                    )
+                    .await?;
                     Some(nwc_service)
                 }
             },
@@ -568,7 +566,7 @@ impl LiquidSdk {
         if let Some(nwc_service) = self.nwc_service.get() {
             handles.push(TaskHandle {
                 name: "nwc-service".to_string(),
-                handle: nwc_service.start(self.shutdown_receiver.clone()),
+                handle: nwc_service.clone().start(self.shutdown_receiver.clone()),
             });
         }
 

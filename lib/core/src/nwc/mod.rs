@@ -70,7 +70,7 @@ pub trait NWCService: MaybeSend + MaybeSync {
     ///
     /// # Arguments
     /// * `shutdown_receiver` - Channel for receiving shutdown signals
-    fn start(&self, shutdown_receiver: watch::Receiver<()>) -> JoinHandle<()>;
+    fn start(self: Arc<Self>, shutdown_receiver: watch::Receiver<()>) -> JoinHandle<()>;
 
     /// Stops the NWC service and performs cleanup.
     ///
@@ -84,9 +84,9 @@ pub trait NWCService: MaybeSend + MaybeSync {
 pub struct BreezNWCService<Handler: RelayMessageHandler> {
     keys: Keys,
     config: Config,
-    handler: Arc<Handler>,
+    client: NostrClient,
+    handler: Box<Handler>,
     event_manager: Arc<EventManager>,
-    client: std::sync::Arc<NostrClient>,
     persister: std::sync::Arc<Persister>,
     subscriptions: Mutex<HashMap<String, SubscriptionId>>,
 }
@@ -102,15 +102,15 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     /// * `relays` - List of relay URLs to connect to
     ///
     /// # Returns
-    /// * `Ok(BreezNWCService)` - Successfully initialized service
+    /// * `Ok(Arc<BreezNWCService>)` - Successfully initialized service
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
     pub(crate) async fn new(
-        handler: Arc<Handler>,
+        handler: Box<Handler>,
         config: Config,
         persister: std::sync::Arc<Persister>,
         event_manager: Arc<EventManager>,
-    ) -> Result<Self> {
-        let client = std::sync::Arc::new(NostrClient::default());
+    ) -> Result<Arc<Self>> {
+        let client = NostrClient::default();
         let relays = config.nwc_relays();
         for relay in &relays {
             client.add_relay(relay).await?;
@@ -118,7 +118,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
 
         let secret_key = Self::get_or_create_secret_key(&config, &persister)?;
         let keys = Keys::parse(&secret_key)?;
-        Ok(Self {
+        Ok(Arc::new(Self {
             client,
             config,
             handler,
@@ -126,7 +126,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             persister,
             event_manager,
             subscriptions: Default::default(),
-        })
+        }))
     }
 
     fn get_or_create_secret_key(config: &Config, p: &Persister) -> Result<String> {
@@ -150,8 +150,10 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
         Ok(key)
     }
 
-    fn list_clients(p: &Persister) -> Result<HashMap<String, NostrWalletConnectURI>> {
-        Ok(p.list_nwc_uris()?
+    fn list_clients(&self) -> Result<HashMap<String, NostrWalletConnectURI>> {
+        Ok(self
+            .persister
+            .list_nwc_uris()?
             .into_iter()
             .filter_map(|(name, uri)| {
                 NostrWalletConnectURI::from_str(&uri)
@@ -161,13 +163,9 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             .collect())
     }
 
-    async fn subscribe(
-        c: &NostrClient,
-        s: &mut HashMap<String, SubscriptionId>,
-        name: String,
-        uri: &NostrWalletConnectURI,
-    ) -> Result<()> {
-        let sub_id = c
+    async fn subscribe(&self, name: String, uri: &NostrWalletConnectURI) -> Result<()> {
+        let sub_id = self
+            .client
             .subscribe(
                 Filter {
                     authors: Some(BTreeSet::from([uri.public_key])),
@@ -177,29 +175,28 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
                 None,
             )
             .await?;
-        s.insert(name, sub_id.val);
+        self.subscriptions.lock().await.insert(name, sub_id.val);
         Ok(())
+    }
+
+    async fn unsubscribe(&self, name: &str) {
+        if let Some(sub_id) = self.subscriptions.lock().await.remove(name) {
+            self.client.unsubscribe(&sub_id).await;
+        }
     }
 }
 
 impl BreezNWCService<BreezRelayMessageHandler> {
-    async fn send_event(
-        eb: EventBuilder,
-        keys: &Keys,
-        client: &NostrClient,
-    ) -> Result<(), nostr_sdk::client::Error> {
-        let evt = eb.sign_with_keys(keys)?;
-        client.send_event(&evt).await?;
+    async fn send_event(&self, eb: EventBuilder) -> Result<(), nostr_sdk::client::Error> {
+        let evt = eb.sign_with_keys(&self.keys)?;
+        self.client.send_event(&evt).await?;
         Ok(())
     }
 
     async fn handle_event(
+        &self,
         n: &RelayPoolNotification,
         clients: &HashMap<String, NostrWalletConnectURI>,
-        client: &NostrClient,
-        our_keys: &Keys,
-        handler: &BreezRelayMessageHandler,
-        event_manager: &EventManager,
     ) {
         let RelayPoolNotification::Event { event, .. } = n else {
             return;
@@ -223,7 +220,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
 
         // Decrypt the event content
         let decrypted_content =
-            match decrypt(&client_uri.secret, &our_keys.public_key(), &event.content) {
+            match decrypt(&client_uri.secret, &self.keys.public_key(), &event.content) {
                 Ok(content) => content,
                 Err(e) => {
                     warn!("Failed to decrypt event content: {e:?}");
@@ -242,15 +239,16 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         };
 
         let (result, error) = match req.params {
-            RequestParams::PayInvoice(req) => match handler.pay_invoice(req).await {
+            RequestParams::PayInvoice(req) => match self.handler.pay_invoice(req).await {
                 Ok(res) => (Some(ResponseResult::PayInvoice(res)), None),
                 Err(e) => (None, Some(e)),
             },
-            RequestParams::ListTransactions(req) => match handler.list_transactions(req).await {
+            RequestParams::ListTransactions(req) => match self.handler.list_transactions(req).await
+            {
                 Ok(res) => (Some(ResponseResult::ListTransactions(res)), None),
                 Err(e) => (None, Some(e)),
             },
-            RequestParams::GetBalance => match handler.get_balance().await {
+            RequestParams::GetBalance => match self.handler.get_balance().await {
                 Ok(res) => (Some(ResponseResult::GetBalance(res)), None),
                 Err(e) => (None, Some(e)),
             },
@@ -260,7 +258,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             }
         };
 
-        let _ = Self::handle_local_notification(event_manager, &result, &error).await;
+        let _ = self.handle_local_notification(&result, &error).await;
 
         let content = match serde_json::to_string(&Response {
             result_type: req.method,
@@ -276,7 +274,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         info!("NWC Response content: {content}");
         info!("encrypting NWC response");
         let encrypted_content = match encrypt(
-            our_keys.secret_key(),
+            self.keys.secret_key(),
             &client_uri.public_key,
             &content,
             Version::V2,
@@ -290,14 +288,14 @@ impl BreezNWCService<BreezRelayMessageHandler> {
 
         let eb = EventBuilder::new(Kind::WalletConnectResponse, encrypted_content)
             .tags([Tag::event(event.id), Tag::public_key(client_uri.public_key)]);
-        if let Err(e) = Self::send_event(eb, our_keys, client).await {
+        if let Err(e) = self.send_event(eb).await {
             warn!("Could not send response event to relay pool: {e:?}");
         }
         info!("sent encrypted NWC response");
     }
 
     async fn handle_local_notification(
-        event_manager: &EventManager,
+        &self,
         result: &Option<ResponseResult>,
         error: &Option<NIP47Error>,
     ) -> Result<()> {
@@ -337,14 +335,13 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             }
         };
         info!("Sending event: {event:?}");
-        event_manager.notify(event).await;
+        self.event_manager.notify(event).await;
         Ok(())
     }
 
-    async fn forward_payment_to_relays(
+    async fn forward_payment_to_clients(
+        &self,
         p: &Payment,
-        client: &NostrClient,
-        our_keys: &Keys,
         clients: &HashMap<String, NostrWalletConnectURI>,
     ) {
         let (invoice, description, preimage, payment_hash) = match &p.details {
@@ -404,9 +401,9 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             }
         };
 
-        for uri in clients.values() {
+        for (_, uri) in clients {
             let encrypted_content = match encrypt(
-                our_keys.secret_key(),
+                self.keys.secret_key(),
                 &uri.public_key,
                 &notification_content,
                 Version::V2,
@@ -421,7 +418,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             let eb = EventBuilder::new(Kind::Custom(23196), encrypted_content)
                 .tags([Tag::public_key(uri.public_key)]);
 
-            if let Err(e) = Self::send_event(eb, our_keys, client).await {
+            if let Err(e) = self.send_event(eb).await {
                 warn!("Could not send notification event to relay: {e:?}");
             } else {
                 info!("Sent payment notification to relay");
@@ -442,9 +439,7 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
             .collect();
         let uri = NostrWalletConnectURI::new(self.keys.public_key, relays, random_secret_key, None);
         self.persister.set_nwc_uri(name.clone(), uri.to_string())?;
-
-        let mut subs = self.subscriptions.lock().await;
-        Self::subscribe(&self.client, &mut subs, name, &uri).await?;
+        self.subscribe(name, &uri).await?;
         Ok(uri.to_string())
     }
 
@@ -453,23 +448,16 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
     }
 
     async fn remove_connection_string(&self, name: String) -> Result<()> {
-        if let Some(sub_id) = self.subscriptions.lock().await.remove(&name) {
-            self.client.unsubscribe(&sub_id).await;
-        }
+        self.unsubscribe(&name).await;
         self.persister.remove_nwc_uri(name)?;
         Ok(())
     }
 
-    fn start(&self, shutdown: watch::Receiver<()>) -> JoinHandle<()> {
-        let client = self.client.clone();
-        let handler = self.handler.clone();
-        let event_manager = self.event_manager.clone();
-        let our_keys = self.keys.clone();
-        let persister = self.persister.clone();
+    fn start(self: Arc<Self>, shutdown: watch::Receiver<()>) -> JoinHandle<()> {
+        let s = self.clone();
         let mut sdk_event_listener = self.event_manager.subscribe();
-
         let nwc_service_future = async move {
-            client.connect().await;
+            s.client.connect().await;
 
             info!("Successfully connected NWC client");
 
@@ -483,18 +471,15 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
             .join(" ");
             content.push_str("notifications");
 
-            if let Err(err) = Self::send_event(
-                EventBuilder::new(Kind::WalletConnectInfo, content),
-                &our_keys,
-                &client,
-            )
-            .await
+            if let Err(err) = s
+                .send_event(EventBuilder::new(Kind::WalletConnectInfo, content))
+                .await
             {
                 warn!("Could not send info event to relay pool: {err:?}");
             }
 
             // Load the clients from the database and susbcribe to each pubkey
-            let clients = match Self::list_clients(&persister) {
+            let clients = match s.list_clients() {
                 Ok(clients) => clients,
                 Err(err) => {
                     warn!("Could not load active NWC clients: {err:?}");
@@ -502,23 +487,24 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                 }
             };
 
-            let mut notifications_listener = client.notifications();
+            let mut notifications_listener = s.client.notifications();
             loop {
                 tokio::select! {
-                    Ok(SdkEvent::PaymentSucceeded { details: payment }) = sdk_event_listener.recv() => Self::forward_payment_to_relays(&payment, &client, &our_keys, &clients).await,
-                    Ok(notification) = notifications_listener.recv() => Self::handle_event(&notification, &clients, &client, &our_keys, &handler, &event_manager).await,
+                    Ok(SdkEvent::PaymentSucceeded { details: payment }) = sdk_event_listener.recv() => s.forward_payment_to_clients(&payment, &clients).await,
+                    Ok(notification) = notifications_listener.recv() => s.handle_event(&notification, &clients).await,
                 }
             }
         };
 
-        let client = self.client.clone();
         tokio::task::spawn(async move {
             utils::run_with_shutdown_and_cleanup(
                 shutdown,
                 "Received shutdown signal, exiting NWC service loop",
                 nwc_service_future,
                 || async move {
-                    match tokio::time::timeout(Duration::from_secs(2), client.disconnect()).await {
+                    match tokio::time::timeout(Duration::from_secs(2), self.client.disconnect())
+                        .await
+                    {
                         Ok(_) => {
                             info!("Successfully disconnected NWC client");
                         }
