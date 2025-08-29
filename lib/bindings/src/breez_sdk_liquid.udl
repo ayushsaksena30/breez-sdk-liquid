@@ -927,5 +927,11 @@ interface BindingLiquidSdk {
     sequence<FiatCurrency> list_fiat_currencies();
 
     [Throws=SdkError]
-    string get_nwc_uri();
+    string new_nwc_uri(string name);
+
+    [Throws=SdkError]
+    record<string, string> list_nwc_uris();
+
+    [Throws=SdkError]
+    void remove_nwc_uri(string name);
 };

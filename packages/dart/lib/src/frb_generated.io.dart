@@ -40,6 +40,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw);
+
+  @protected
   BindingLiquidSdk dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
     dynamic raw,
   );
@@ -384,6 +387,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Rate> dco_decode_list_rate(dynamic raw);
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
   List<RefundableSwap> dco_decode_list_refundable_swap(dynamic raw);
 
   @protected
@@ -618,6 +624,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RecommendedFees dco_decode_recommended_fees(dynamic raw);
 
   @protected
+  (String, String) dco_decode_record_string_string(dynamic raw);
+
+  @protected
   RefundRequest dco_decode_refund_request(dynamic raw);
 
   @protected
@@ -703,6 +712,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
     SseDeserializer deserializer,
   );
+
+  @protected
+  Map<String, String> sse_decode_Map_String_String_None(SseDeserializer deserializer);
 
   @protected
   BindingLiquidSdk sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
@@ -1065,6 +1077,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Rate> sse_decode_list_rate(SseDeserializer deserializer);
 
   @protected
+  List<(String, String)> sse_decode_list_record_string_string(SseDeserializer deserializer);
+
+  @protected
   List<RefundableSwap> sse_decode_list_refundable_swap(SseDeserializer deserializer);
 
   @protected
@@ -1299,6 +1314,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RecommendedFees sse_decode_recommended_fees(SseDeserializer deserializer);
 
   @protected
+  (String, String) sse_decode_record_string_string(SseDeserializer deserializer);
+
+  @protected
   RefundRequest sse_decode_refund_request(SseDeserializer deserializer);
 
   @protected
@@ -1374,6 +1392,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_encode_AnyhowException(AnyhowException raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     throw UnimplementedError();
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_record_string_string> cst_encode_Map_String_String_None(Map<String, String> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_list_record_string_string(raw.entries.map((e) => (e.key, e.value)).toList());
   }
 
   @protected
@@ -2059,6 +2083,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     final ans = wire.cst_new_list_rate(raw.length);
     for (var i = 0; i < raw.length; ++i) {
       cst_api_fill_to_wire_rate(raw[i], ans.ref.ptr[i]);
+    }
+    return ans;
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_record_string_string> cst_encode_list_record_string_string(
+    List<(String, String)> raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    final ans = wire.cst_new_list_record_string_string(raw.length);
+    for (var i = 0; i < raw.length; ++i) {
+      cst_api_fill_to_wire_record_string_string(raw[i], ans.ref.ptr[i]);
     }
     return ans;
   }
@@ -3917,6 +3953,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   }
 
   @protected
+  void cst_api_fill_to_wire_record_string_string(
+    (String, String) apiObj,
+    wire_cst_record_string_string wireObj,
+  ) {
+    wireObj.field0 = cst_encode_String(apiObj.$1);
+    wireObj.field1 = cst_encode_String(apiObj.$2);
+  }
+
+  @protected
   void cst_api_fill_to_wire_refund_request(RefundRequest apiObj, wire_cst_refund_request wireObj) {
     wireObj.swap_address = cst_encode_String(apiObj.swapAddress);
     wireObj.refund_address = cst_encode_String(apiObj.refundAddress);
@@ -4256,6 +4301,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     BindingLiquidSdk self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_Map_String_String_None(Map<String, String> self, SseSerializer serializer);
 
   @protected
   void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
@@ -4651,6 +4699,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_rate(List<Rate> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_record_string_string(List<(String, String)> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_refundable_swap(List<RefundableSwap> self, SseSerializer serializer);
 
   @protected
@@ -4889,6 +4940,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_recommended_fees(RecommendedFees self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_record_string_string((String, String) self, SseSerializer serializer);
 
   @protected
   void sse_encode_refund_request(RefundRequest self, SseSerializer serializer);
@@ -5173,17 +5227,6 @@ class RustLibWire implements BaseWire {
   late final _wire__crate__bindings__BindingLiquidSdk_get_info =
       _wire__crate__bindings__BindingLiquidSdk_get_infoPtr.asFunction<void Function(int, int)>();
 
-  void wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(int port_, int that) {
-    return _wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(port_, that);
-  }
-
-  late final _wire__crate__bindings__BindingLiquidSdk_get_nwc_uriPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
-        'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri',
-      );
-  late final _wire__crate__bindings__BindingLiquidSdk_get_nwc_uri =
-      _wire__crate__bindings__BindingLiquidSdk_get_nwc_uriPtr.asFunction<void Function(int, int)>();
-
   void wire__crate__bindings__BindingLiquidSdk_get_payment(
     int port_,
     int that,
@@ -5209,6 +5252,17 @@ class RustLibWire implements BaseWire {
       );
   late final _wire__crate__bindings__BindingLiquidSdk_list_fiat_currencies =
       _wire__crate__bindings__BindingLiquidSdk_list_fiat_currenciesPtr.asFunction<void Function(int, int)>();
+
+  void wire__crate__bindings__BindingLiquidSdk_list_nwc_uris(int port_, int that) {
+    return _wire__crate__bindings__BindingLiquidSdk_list_nwc_uris(port_, that);
+  }
+
+  late final _wire__crate__bindings__BindingLiquidSdk_list_nwc_urisPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_nwc_uris',
+      );
+  late final _wire__crate__bindings__BindingLiquidSdk_list_nwc_uris =
+      _wire__crate__bindings__BindingLiquidSdk_list_nwc_urisPtr.asFunction<void Function(int, int)>();
 
   void wire__crate__bindings__BindingLiquidSdk_list_payments(
     int port_,
@@ -5284,6 +5338,21 @@ class RustLibWire implements BaseWire {
   late final _wire__crate__bindings__BindingLiquidSdk_lnurl_withdraw =
       _wire__crate__bindings__BindingLiquidSdk_lnurl_withdrawPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_ln_url_withdraw_request>)>();
+
+  void wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
+    int port_,
+    int that,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(port_, that, name);
+  }
+
+  late final _wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr = _lookup<
+    ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>
+  >('frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri');
+  late final _wire__crate__bindings__BindingLiquidSdk_new_nwc_uri =
+      _wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr
+          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
   void wire__crate__bindings__BindingLiquidSdk_parse(
     int port_,
@@ -5471,6 +5540,21 @@ class RustLibWire implements BaseWire {
   >('frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_register_webhook');
   late final _wire__crate__bindings__BindingLiquidSdk_register_webhook =
       _wire__crate__bindings__BindingLiquidSdk_register_webhookPtr
+          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
+
+  void wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri(
+    int port_,
+    int that,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri(port_, that, name);
+  }
+
+  late final _wire__crate__bindings__BindingLiquidSdk_remove_nwc_uriPtr = _lookup<
+    ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>
+  >('frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri');
+  late final _wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri =
+      _wire__crate__bindings__BindingLiquidSdk_remove_nwc_uriPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
   void wire__crate__bindings__BindingLiquidSdk_rescan_onchain_swaps(int port_, int that) {
@@ -6480,6 +6564,18 @@ class RustLibWire implements BaseWire {
       );
   late final _cst_new_list_rate =
       _cst_new_list_ratePtr.asFunction<ffi.Pointer<wire_cst_list_rate> Function(int)>();
+
+  ffi.Pointer<wire_cst_list_record_string_string> cst_new_list_record_string_string(int len) {
+    return _cst_new_list_record_string_string(len);
+  }
+
+  late final _cst_new_list_record_string_stringPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_cst_list_record_string_string> Function(ffi.Int32)>>(
+        'frbgen_breez_liquid_cst_new_list_record_string_string',
+      );
+  late final _cst_new_list_record_string_string =
+      _cst_new_list_record_string_stringPtr
+          .asFunction<ffi.Pointer<wire_cst_list_record_string_string> Function(int)>();
 
   ffi.Pointer<wire_cst_list_refundable_swap> cst_new_list_refundable_swap(int len) {
     return _cst_new_list_refundable_swap(len);
@@ -7697,6 +7793,19 @@ final class wire_cst_rate extends ffi.Struct {
 
 final class wire_cst_list_rate extends ffi.Struct {
   external ffi.Pointer<wire_cst_rate> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
+final class wire_cst_record_string_string extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field1;
+}
+
+final class wire_cst_list_record_string_string extends ffi.Struct {
+  external ffi.Pointer<wire_cst_record_string_string> ptr;
 
   @ffi.Int32()
   external int len;

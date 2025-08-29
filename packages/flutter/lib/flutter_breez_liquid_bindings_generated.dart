@@ -278,23 +278,6 @@ class FlutterBreezLiquidBindings {
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_infoPtr
           .asFunction<void Function(int, int)>();
 
-  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(
-    int port_,
-    int that,
-  ) {
-    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(
-      port_,
-      that,
-    );
-  }
-
-  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uriPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
-          'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri');
-  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri =
-      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uriPtr
-          .asFunction<void Function(int, int)>();
-
   void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_payment(
     int port_,
     int that,
@@ -330,6 +313,23 @@ class FlutterBreezLiquidBindings {
           'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_fiat_currencies');
   late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_fiat_currencies =
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_fiat_currenciesPtr
+          .asFunction<void Function(int, int)>();
+
+  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_nwc_uris(
+    int port_,
+    int that,
+  ) {
+    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_nwc_uris(
+      port_,
+      that,
+    );
+  }
+
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_nwc_urisPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+          'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_nwc_uris');
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_nwc_uris =
+      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_nwc_urisPtr
           .asFunction<void Function(int, int)>();
 
   void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_list_payments(
@@ -428,6 +428,26 @@ class FlutterBreezLiquidBindings {
   late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_lnurl_withdraw =
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_lnurl_withdrawPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_ln_url_withdraw_request>)>();
+
+  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
+    int port_,
+    int that,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
+      port_,
+      that,
+      name,
+    );
+  }
+
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>>(
+      'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri');
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri =
+      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr
+          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
   void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_parse(
     int port_,
@@ -665,6 +685,26 @@ class FlutterBreezLiquidBindings {
       'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_register_webhook');
   late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_register_webhook =
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_register_webhookPtr
+          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
+
+  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri(
+    int port_,
+    int that,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri(
+      port_,
+      that,
+      name,
+    );
+  }
+
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_remove_nwc_uriPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>>(
+      'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri');
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri =
+      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_remove_nwc_uriPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
   void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_rescan_onchain_swaps(
@@ -1764,6 +1804,21 @@ class FlutterBreezLiquidBindings {
           'frbgen_breez_liquid_cst_new_list_rate');
   late final _frbgen_breez_liquid_cst_new_list_rate =
       _frbgen_breez_liquid_cst_new_list_ratePtr.asFunction<ffi.Pointer<wire_cst_list_rate> Function(int)>();
+
+  ffi.Pointer<wire_cst_list_record_string_string> frbgen_breez_liquid_cst_new_list_record_string_string(
+    int len,
+  ) {
+    return _frbgen_breez_liquid_cst_new_list_record_string_string(
+      len,
+    );
+  }
+
+  late final _frbgen_breez_liquid_cst_new_list_record_string_stringPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_cst_list_record_string_string> Function(ffi.Int32)>>(
+          'frbgen_breez_liquid_cst_new_list_record_string_string');
+  late final _frbgen_breez_liquid_cst_new_list_record_string_string =
+      _frbgen_breez_liquid_cst_new_list_record_string_stringPtr
+          .asFunction<ffi.Pointer<wire_cst_list_record_string_string> Function(int)>();
 
   ffi.Pointer<wire_cst_list_refundable_swap> frbgen_breez_liquid_cst_new_list_refundable_swap(
     int len,
@@ -5400,6 +5455,19 @@ final class wire_cst_rate extends ffi.Struct {
 
 final class wire_cst_list_rate extends ffi.Struct {
   external ffi.Pointer<wire_cst_rate> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
+final class wire_cst_record_string_string extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field1;
+}
+
+final class wire_cst_list_record_string_string extends ffi.Struct {
+  external ffi.Pointer<wire_cst_record_string_string> ptr;
 
   @ffi.Int32()
   external int len;

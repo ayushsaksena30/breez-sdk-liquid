@@ -566,7 +566,10 @@ impl LiquidSdk {
             });
         }
         if let Some(nwc_service) = self.nwc_service.get() {
-            nwc_service.start(self.shutdown_receiver.clone());
+            handles.push(TaskHandle {
+                name: "nwc-service".to_string(),
+                handle: nwc_service.start(self.shutdown_receiver.clone()),
+            });
         }
 
         handles.push(TaskHandle {
@@ -5028,28 +5031,52 @@ impl LiquidSdk {
         crate::logger::init_logging(log_dir, app_logger)
     }
 
-    /// Returns the Nostr Wallet Connect (NWC) connection URI.
+    fn get_nwc_service(&self) -> SdkResult<Arc<dyn NWCService>> {
+        match self.nwc_service.get() {
+            Some(nwc_service) => Ok(nwc_service.clone()),
+            None => Err(SdkError::Generic {
+                err: "NWC service is not enabled. Set 'nwc_options.enabled' to true in the Config to use NWC functionality".to_string()
+            }),
+        }
+    }
+
+    /// Returns a new Nostr Wallet Connect (NWC) connection URI.
     ///
-    /// ### Returns
-    ///
-    /// Returns the NWC connection URI as a string if NWC is enabled and initialized,
-    /// otherwise returns an error.
+    /// ### Arguments
+    /// * `name` - The unique identifier for the connection string
     ///
     /// ### Errors
     /// Error is thrown when:
     /// - NWC service is not enabled in the configuration
     /// - There's an error generating the connection string
+    pub async fn new_nwc_uri(&self, name: String) -> SdkResult<String> {
+        Ok(self.get_nwc_service()?.new_connection_string(name).await?)
+    }
 
-    pub async fn get_nwc_uri(&self) -> SdkResult<String> {
-        match self.nwc_service.get() {
-            Some(nwc_service) =>
-                Ok(nwc_service
-                    .get_connection_string()
-                    .await),
-            None => Err(SdkError::Generic {
-                err: "NWC service is not enabled. Set 'nwc_options.enabled' to true in the Config to use NWC functionality".to_string()
-            }),
-        }
+    /// Returns a list of the currently active Nostr Wallet Connect (NWC) connection URIs.
+    ///
+    /// ### Errors
+    /// Error is thrown when:
+    /// - NWC service is not enabled in the configuration
+    /// - There's an error retrieving the connection strings
+    pub async fn list_nwc_uris(&self) -> SdkResult<HashMap<String, String>> {
+        Ok(self.get_nwc_service()?.list_connection_strings().await?)
+    }
+
+    /// Removes an active Nostr Wallet Connect (NWC) URI.
+    ///
+    /// ### Arguments
+    /// * `name` - The unique identifier for the connection string
+    ///
+    /// ### Errors
+    /// Error is thrown when:
+    /// - NWC service is not enabled in the configuration
+    /// - The connection string was never set
+    pub async fn remove_nwc_uri(&self, name: String) -> SdkResult<()> {
+        Ok(self
+            .get_nwc_service()?
+            .remove_connection_string(name)
+            .await?)
     }
 }
 

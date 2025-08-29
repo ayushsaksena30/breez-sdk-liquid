@@ -53,7 +53,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.9.0';
 
   @override
-  int get rustContentHash => 1810318493;
+  int get rustContentHash => 1816470161;
 
   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'breez_sdk_liquid',
@@ -108,8 +108,6 @@ abstract class RustLibApi extends BaseApi {
 
   Future<GetInfoResponse> crateBindingsBindingLiquidSdkGetInfo({required BindingLiquidSdk that});
 
-  Future<String> crateBindingsBindingLiquidSdkGetNwcUri({required BindingLiquidSdk that});
-
   Future<Payment?> crateBindingsBindingLiquidSdkGetPayment({
     required BindingLiquidSdk that,
     required GetPaymentRequest req,
@@ -118,6 +116,8 @@ abstract class RustLibApi extends BaseApi {
   Future<List<FiatCurrency>> crateBindingsBindingLiquidSdkListFiatCurrencies({
     required BindingLiquidSdk that,
   });
+
+  Future<Map<String, String>> crateBindingsBindingLiquidSdkListNwcUris({required BindingLiquidSdk that});
 
   Future<List<Payment>> crateBindingsBindingLiquidSdkListPayments({
     required BindingLiquidSdk that,
@@ -139,6 +139,11 @@ abstract class RustLibApi extends BaseApi {
   Future<LnUrlWithdrawResult> crateBindingsBindingLiquidSdkLnurlWithdraw({
     required BindingLiquidSdk that,
     required LnUrlWithdrawRequest req,
+  });
+
+  Future<String> crateBindingsBindingLiquidSdkNewNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
   });
 
   Future<InputType> crateBindingsBindingLiquidSdkParse({
@@ -196,6 +201,11 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateBindingsBindingLiquidSdkRegisterWebhook({
     required BindingLiquidSdk that,
     required String webhookUrl,
+  });
+
+  Future<void> crateBindingsBindingLiquidSdkRemoveNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
   });
 
   Future<void> crateBindingsBindingLiquidSdkRescanOnchainSwaps({required BindingLiquidSdk that});
@@ -583,28 +593,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "BindingLiquidSdk_get_info", argNames: ["that"]);
 
   @override
-  Future<String> crateBindingsBindingLiquidSdkGetNwcUri({required BindingLiquidSdk that}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          var arg0 =
-              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
-                that,
-              );
-          return wire.wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(port_, arg0);
-        },
-        codec: DcoCodec(decodeSuccessData: dco_decode_String, decodeErrorData: dco_decode_sdk_error),
-        constMeta: kCrateBindingsBindingLiquidSdkGetNwcUriConstMeta,
-        argValues: [that],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateBindingsBindingLiquidSdkGetNwcUriConstMeta =>
-      const TaskConstMeta(debugName: "BindingLiquidSdk_get_nwc_uri", argNames: ["that"]);
-
-  @override
   Future<Payment?> crateBindingsBindingLiquidSdkGetPayment({
     required BindingLiquidSdk that,
     required GetPaymentRequest req,
@@ -659,6 +647,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateBindingsBindingLiquidSdkListFiatCurrenciesConstMeta =>
       const TaskConstMeta(debugName: "BindingLiquidSdk_list_fiat_currencies", argNames: ["that"]);
+
+  @override
+  Future<Map<String, String>> crateBindingsBindingLiquidSdkListNwcUris({required BindingLiquidSdk that}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
+                that,
+              );
+          return wire.wire__crate__bindings__BindingLiquidSdk_list_nwc_uris(port_, arg0);
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_Map_String_String_None,
+          decodeErrorData: dco_decode_sdk_error,
+        ),
+        constMeta: kCrateBindingsBindingLiquidSdkListNwcUrisConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateBindingsBindingLiquidSdkListNwcUrisConstMeta =>
+      const TaskConstMeta(debugName: "BindingLiquidSdk_list_nwc_uris", argNames: ["that"]);
 
   @override
   Future<List<Payment>> crateBindingsBindingLiquidSdkListPayments({
@@ -802,6 +815,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateBindingsBindingLiquidSdkLnurlWithdrawConstMeta =>
       const TaskConstMeta(debugName: "BindingLiquidSdk_lnurl_withdraw", argNames: ["that", "req"]);
+
+  @override
+  Future<String> crateBindingsBindingLiquidSdkNewNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
+                that,
+              );
+          var arg1 = cst_encode_String(name);
+          return wire.wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(port_, arg0, arg1);
+        },
+        codec: DcoCodec(decodeSuccessData: dco_decode_String, decodeErrorData: dco_decode_sdk_error),
+        constMeta: kCrateBindingsBindingLiquidSdkNewNwcUriConstMeta,
+        argValues: [that, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateBindingsBindingLiquidSdkNewNwcUriConstMeta =>
+      const TaskConstMeta(debugName: "BindingLiquidSdk_new_nwc_uri", argNames: ["that", "name"]);
 
   @override
   Future<InputType> crateBindingsBindingLiquidSdkParse({
@@ -1142,6 +1181,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "BindingLiquidSdk_register_webhook", argNames: ["that", "webhookUrl"]);
 
   @override
+  Future<void> crateBindingsBindingLiquidSdkRemoveNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
+                that,
+              );
+          var arg1 = cst_encode_String(name);
+          return wire.wire__crate__bindings__BindingLiquidSdk_remove_nwc_uri(port_, arg0, arg1);
+        },
+        codec: DcoCodec(decodeSuccessData: dco_decode_unit, decodeErrorData: dco_decode_sdk_error),
+        constMeta: kCrateBindingsBindingLiquidSdkRemoveNwcUriConstMeta,
+        argValues: [that, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateBindingsBindingLiquidSdkRemoveNwcUriConstMeta =>
+      const TaskConstMeta(debugName: "BindingLiquidSdk_remove_nwc_uri", argNames: ["that", "name"]);
+
+  @override
   Future<void> crateBindingsBindingLiquidSdkRescanOnchainSwaps({required BindingLiquidSdk that}) {
     return handler.executeNormal(
       NormalTask(
@@ -1424,6 +1489,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return BindingLiquidSdkImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(dco_decode_list_record_string_string(raw).map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
@@ -2349,6 +2420,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
   List<RefundableSwap> dco_decode_list_refundable_swap(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_refundable_swap).toList();
@@ -3244,6 +3321,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  (String, String) dco_decode_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
+  }
+
+  @protected
   RefundRequest dco_decode_refund_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -3556,6 +3643,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
+  }
+
+  @protected
+  Map<String, String> sse_decode_Map_String_String_None(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_record_string_string(deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
@@ -4599,6 +4693,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <Rate>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_rate(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<(String, String)> sse_decode_list_record_string_string(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, String)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_string(deserializer));
     }
     return ans_;
   }
@@ -5761,6 +5867,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  (String, String) sse_decode_record_string_string(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
   RefundRequest sse_decode_refund_request(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_swapAddress = sse_decode_String(deserializer);
@@ -6200,6 +6314,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize((self as BindingLiquidSdkImpl).frbInternalSseEncode(move: false), serializer);
+  }
+
+  @protected
+  void sse_encode_Map_String_String_None(Map<String, String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_string_string(self.entries.map((e) => (e.key, e.value)).toList(), serializer);
   }
 
   @protected
@@ -7127,6 +7247,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_rate(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_record_string_string(List<(String, String)> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_string(item, serializer);
     }
   }
 
@@ -8071,6 +8200,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_record_string_string((String, String) self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_String(self.$2, serializer);
+  }
+
+  @protected
   void sse_encode_refund_request(RefundRequest self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.swapAddress, serializer);
@@ -8372,13 +8508,14 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
 
   Future<GetInfoResponse> getInfo() => RustLib.instance.api.crateBindingsBindingLiquidSdkGetInfo(that: this);
 
-  Future<String> getNwcUri() => RustLib.instance.api.crateBindingsBindingLiquidSdkGetNwcUri(that: this);
-
   Future<Payment?> getPayment({required GetPaymentRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkGetPayment(that: this, req: req);
 
   Future<List<FiatCurrency>> listFiatCurrencies() =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkListFiatCurrencies(that: this);
+
+  Future<Map<String, String>> listNwcUris() =>
+      RustLib.instance.api.crateBindingsBindingLiquidSdkListNwcUris(that: this);
 
   Future<List<Payment>> listPayments({required ListPaymentsRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkListPayments(that: this, req: req);
@@ -8394,6 +8531,9 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
 
   Future<LnUrlWithdrawResult> lnurlWithdraw({required LnUrlWithdrawRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkLnurlWithdraw(that: this, req: req);
+
+  Future<String> newNwcUri({required String name}) =>
+      RustLib.instance.api.crateBindingsBindingLiquidSdkNewNwcUri(that: this, name: name);
 
   Future<InputType> parse({required String input}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkParse(that: this, input: input);
@@ -8430,6 +8570,9 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
 
   Future<void> registerWebhook({required String webhookUrl}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkRegisterWebhook(that: this, webhookUrl: webhookUrl);
+
+  Future<void> removeNwcUri({required String name}) =>
+      RustLib.instance.api.crateBindingsBindingLiquidSdkRemoveNwcUri(that: this, name: name);
 
   Future<void> rescanOnchainSwaps() =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkRescanOnchainSwaps(that: this);

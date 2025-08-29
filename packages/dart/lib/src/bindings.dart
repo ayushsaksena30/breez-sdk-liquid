@@ -57,11 +57,11 @@ abstract class BindingLiquidSdk implements RustOpaqueInterface {
 
   Future<GetInfoResponse> getInfo();
 
-  Future<String> getNwcUri();
-
   Future<Payment?> getPayment({required GetPaymentRequest req});
 
   Future<List<FiatCurrency>> listFiatCurrencies();
+
+  Future<Map<String, String>> listNwcUris();
 
   Future<List<Payment>> listPayments({required ListPaymentsRequest req});
 
@@ -72,6 +72,8 @@ abstract class BindingLiquidSdk implements RustOpaqueInterface {
   Future<LnUrlPayResult> lnurlPay({required LnUrlPayRequest req});
 
   Future<LnUrlWithdrawResult> lnurlWithdraw({required LnUrlWithdrawRequest req});
+
+  Future<String> newNwcUri({required String name});
 
   Future<InputType> parse({required String input});
 
@@ -96,6 +98,8 @@ abstract class BindingLiquidSdk implements RustOpaqueInterface {
   Future<RefundResponse> refund({required RefundRequest req});
 
   Future<void> registerWebhook({required String webhookUrl});
+
+  Future<void> removeNwcUri({required String name});
 
   Future<void> rescanOnchainSwaps();
 
