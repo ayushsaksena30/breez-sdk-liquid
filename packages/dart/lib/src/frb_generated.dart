@@ -113,8 +113,6 @@ abstract class RustLibApi extends BaseApi {
 
   Future<GetInfoResponse> crateBindingsBindingLiquidSdkGetInfo({required BindingLiquidSdk that});
 
-  Future<String> crateBindingsBindingLiquidSdkGetNwcUri({required BindingLiquidSdk that});
-
   Future<Payment?> crateBindingsBindingLiquidSdkGetPayment({
     required BindingLiquidSdk that,
     required GetPaymentRequest req,
@@ -146,6 +144,11 @@ abstract class RustLibApi extends BaseApi {
   Future<LnUrlWithdrawResult> crateBindingsBindingLiquidSdkLnurlWithdraw({
     required BindingLiquidSdk that,
     required LnUrlWithdrawRequest req,
+  });
+
+  Future<String> crateBindingsBindingLiquidSdkNewNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
   });
 
   Future<InputType> crateBindingsBindingLiquidSdkParse({
@@ -627,28 +630,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "BindingLiquidSdk_get_info", argNames: ["that"]);
 
   @override
-  Future<String> crateBindingsBindingLiquidSdkGetNwcUri({required BindingLiquidSdk that}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          var arg0 =
-              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
-                that,
-              );
-          return wire.wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(port_, arg0);
-        },
-        codec: DcoCodec(decodeSuccessData: dco_decode_String, decodeErrorData: dco_decode_sdk_error),
-        constMeta: kCrateBindingsBindingLiquidSdkGetNwcUriConstMeta,
-        argValues: [that],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateBindingsBindingLiquidSdkGetNwcUriConstMeta =>
-      const TaskConstMeta(debugName: "BindingLiquidSdk_get_nwc_uri", argNames: ["that"]);
-
-  @override
   Future<Payment?> crateBindingsBindingLiquidSdkGetPayment({
     required BindingLiquidSdk that,
     required GetPaymentRequest req,
@@ -871,6 +852,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateBindingsBindingLiquidSdkLnurlWithdrawConstMeta =>
       const TaskConstMeta(debugName: "BindingLiquidSdk_lnurl_withdraw", argNames: ["that", "req"]);
+
+  @override
+  Future<String> crateBindingsBindingLiquidSdkNewNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
+                that,
+              );
+          var arg1 = cst_encode_String(name);
+          return wire.wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(port_, arg0, arg1);
+        },
+        codec: DcoCodec(decodeSuccessData: dco_decode_String, decodeErrorData: dco_decode_sdk_error),
+        constMeta: kCrateBindingsBindingLiquidSdkNewNwcUriConstMeta,
+        argValues: [that, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateBindingsBindingLiquidSdkNewNwcUriConstMeta =>
+      const TaskConstMeta(debugName: "BindingLiquidSdk_new_nwc_uri", argNames: ["that", "name"]);
 
   @override
   Future<InputType> crateBindingsBindingLiquidSdkParse({
@@ -8683,8 +8690,6 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
 
   Future<GetInfoResponse> getInfo() => RustLib.instance.api.crateBindingsBindingLiquidSdkGetInfo(that: this);
 
-  Future<String> getNwcUri() => RustLib.instance.api.crateBindingsBindingLiquidSdkGetNwcUri(that: this);
-
   Future<Payment?> getPayment({required GetPaymentRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkGetPayment(that: this, req: req);
 
@@ -8708,6 +8713,9 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
 
   Future<LnUrlWithdrawResult> lnurlWithdraw({required LnUrlWithdrawRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkLnurlWithdraw(that: this, req: req);
+
+  Future<String> newNwcUri({required String name}) =>
+      RustLib.instance.api.crateBindingsBindingLiquidSdkNewNwcUri(that: this, name: name);
 
   Future<InputType> parse({required String input}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkParse(that: this, input: input);

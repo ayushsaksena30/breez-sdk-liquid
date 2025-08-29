@@ -298,23 +298,6 @@ class FlutterBreezLiquidBindings {
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_infoPtr
           .asFunction<void Function(int, int)>();
 
-  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(
-    int port_,
-    int that,
-  ) {
-    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri(
-      port_,
-      that,
-    );
-  }
-
-  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uriPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
-          'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri');
-  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uri =
-      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_nwc_uriPtr
-          .asFunction<void Function(int, int)>();
-
   void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_get_payment(
     int port_,
     int that,
@@ -465,6 +448,26 @@ class FlutterBreezLiquidBindings {
   late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_lnurl_withdraw =
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_lnurl_withdrawPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_ln_url_withdraw_request>)>();
+
+  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
+    int port_,
+    int that,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
+      port_,
+      that,
+      name,
+    );
+  }
+
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>>(
+      'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri');
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri =
+      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr
+          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
   void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_parse(
     int port_,
