@@ -21,8 +21,8 @@ use nostr_sdk::{
         NotificationType, PaymentNotification, Request, RequestParams, Response, ResponseResult,
         TransactionType,
     },
-    Client as NostrClient, EventBuilder, Filter, Keys, Kind, RelayPoolNotification, RelayUrl,
-    SubscriptionId, Tag, Timestamp,
+    Alphabet, Client as NostrClient, EventBuilder, Filter, Keys, Kind, RelayPoolNotification,
+    RelayUrl, SingleLetterTag, Tag, Timestamp,
 };
 use sdk_common::utils::Arc;
 use tokio::sync::{mpsc, watch, Mutex};
@@ -88,7 +88,6 @@ pub struct BreezNWCService<Handler: RelayMessageHandler> {
     handler: Box<Handler>,
     event_manager: Arc<EventManager>,
     persister: std::sync::Arc<Persister>,
-    subscriptions: Mutex<HashMap<String, SubscriptionId>>,
     resubscription_trigger: Mutex<Option<mpsc::Sender<()>>>,
 }
 
@@ -126,7 +125,6 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             keys,
             persister,
             event_manager,
-            subscriptions: Default::default(),
             resubscription_trigger: Default::default(),
         }))
     }
@@ -165,19 +163,20 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
             .collect())
     }
 
-    async fn subscribe(
-        &self,
-        name: String,
-        uri: &NostrWalletConnectURI,
-        trigger_resub: bool,
-    ) -> Result<()> {
-        let sub_id = self
-            .client
+    async fn resubscribe(&self, clients: &HashMap<String, NostrWalletConnectURI>) -> Result<()> {
+        let pubkeys = clients
+            .values()
+            .map(|uri| uri.public_key.to_string())
+            .collect();
+        self.client
             .subscribe(
                 Filter {
                     generic_tags: BTreeMap::from([(
-                        nostr_sdk::SingleLetterTag::from_char('p')?,
-                        BTreeSet::from([uri.public_key.to_string()]),
+                        SingleLetterTag {
+                            character: Alphabet::P,
+                            uppercase: false,
+                        },
+                        pubkeys,
                     )]),
                     kinds: Some(BTreeSet::from([Kind::WalletConnectRequest])),
                     ..Default::default()
@@ -185,26 +184,8 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
                 None,
             )
             .await?;
-        self.subscriptions
-            .lock()
-            .await
-            .insert(name.clone(), sub_id.val);
-        if trigger_resub {
-            if let Some(ref trigger) = *self.resubscription_trigger.lock().await {
-                let _ = trigger.send(()).await;
-            }
-        }
-        info!("Successfully subscribed to `{name}` events");
+        info!("Successfully subscribed to events");
         Ok(())
-    }
-
-    async fn unsubscribe(&self, name: &str) {
-        if let Some(sub_id) = self.subscriptions.lock().await.remove(name) {
-            self.client.unsubscribe(&sub_id).await;
-        }
-        if let Some(ref trigger) = *self.resubscription_trigger.lock().await {
-            let _ = trigger.send(()).await;
-        }
     }
 }
 
@@ -215,40 +196,13 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         Ok(())
     }
 
-    async fn handle_event(
-        &self,
-        n: &RelayPoolNotification,
-        clients: &HashMap<String, NostrWalletConnectURI>,
-    ) {
-        let RelayPoolNotification::Event {
-            event,
-            subscription_id,
-            ..
-        } = n
-        else {
+    async fn handle_event(&self, n: &RelayPoolNotification) {
+        let RelayPoolNotification::Event { event, .. } = n else {
             return;
         };
         info!("Received NWC event: {event:?}");
 
-        // Verify event subscription exists and retrieve URI
-        let Some(client_name) = self
-            .subscriptions
-            .lock()
-            .await
-            .iter()
-            .find(|(_, sub_id)| *sub_id == subscription_id)
-            .map(|(name, _)| name.clone())
-        else {
-            warn!(
-                "Could not find active event subscription. Skipping event {}",
-                event.id
-            );
-            return;
-        };
-        let Some(client_uri) = clients.get(&client_name) else {
-            warn!("Could not retrieve client URI. Skipping event {}", event.id);
-            return;
-        };
+        let client_pubkey = event.pubkey;
 
         // Verify the event has not expired
         if event
@@ -267,18 +221,14 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         }
 
         // Decrypt the event content
-        let nwc_client_keypair = Keys::new(client_uri.secret.clone());
-        let decrypted_content = match decrypt(
-            self.keys.secret_key(),
-            &nwc_client_keypair.public_key,
-            &event.content,
-        ) {
-            Ok(content) => content,
-            Err(e) => {
-                warn!("Failed to decrypt event content: {e:?}");
-                return;
-            }
-        };
+        let decrypted_content =
+            match decrypt(self.keys.secret_key(), &client_pubkey, &event.content) {
+                Ok(content) => content,
+                Err(e) => {
+                    warn!("Failed to decrypt event content: {e:?}");
+                    return;
+                }
+            };
 
         info!("Decrypted NWC notification: {decrypted_content}");
 
@@ -327,7 +277,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         info!("encrypting NWC response");
         let encrypted_content = match encrypt(
             self.keys.secret_key(),
-            &nwc_client_keypair.public_key,
+            &client_pubkey,
             &content,
             Version::V2,
         ) {
@@ -339,7 +289,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         };
 
         let eb = EventBuilder::new(Kind::WalletConnectResponse, encrypted_content)
-            .tags([Tag::event(event.id), Tag::public_key(client_uri.public_key)]);
+            .tags([Tag::event(event.id), Tag::public_key(client_pubkey)]);
         if let Err(e) = self.send_event(eb).await {
             warn!("Could not send response event to relay pool: {e:?}");
         }
@@ -453,7 +403,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             }
         };
 
-        for (_, uri) in clients {
+        for uri in clients.values() {
             let nwc_client_keypair = Keys::new(uri.secret.clone());
             let encrypted_content = match encrypt(
                 self.keys.secret_key(),
@@ -478,6 +428,12 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             }
         }
     }
+
+    async fn trigger_resubscription(&self) {
+        if let Some(ref trigger) = *self.resubscription_trigger.lock().await {
+            let _ = trigger.send(()).await;
+        }
+    }
 }
 
 #[sdk_macros::async_trait]
@@ -492,7 +448,7 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
             .collect();
         let uri = NostrWalletConnectURI::new(self.keys.public_key, relays, random_secret_key, None);
         self.persister.set_nwc_uri(name.clone(), uri.to_string())?;
-        self.subscribe(name, &uri, true).await?;
+        self.trigger_resubscription().await;
         Ok(uri.to_string())
     }
 
@@ -501,8 +457,8 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
     }
 
     async fn remove_connection_string(&self, name: String) -> Result<()> {
-        self.unsubscribe(&name).await;
         self.persister.remove_nwc_uri(name)?;
+        self.trigger_resubscription().await;
         Ok(())
     }
 
@@ -534,29 +490,25 @@ impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
                 warn!("Could not send info event to relay pool: {err:?}");
             }
 
-            // Load the clients from the database and susbcribe to each pubkey
-            let clients = match s.list_clients() {
-                Ok(clients) => clients,
-                Err(err) => {
-                    warn!("Could not load active NWC clients: {err:?}");
-                    return;
-                }
-            };
-            for (name, uri) in &clients {
-                if let Err(err) = s.subscribe(name.clone(), &uri, false).await {
-                    warn!("Could not subscribe to persisted client: {err:?}");
-                    continue;
-                };
-            }
-
             let (resub_tx, mut resub_rx) = mpsc::channel::<()>(10);
             *s.resubscription_trigger.lock().await = Some(resub_tx);
             loop {
+                let clients = match s.list_clients() {
+                    Ok(clients) => clients,
+                    Err(err) => {
+                        warn!("Could not retreive active clients from database: {err:?}");
+                        return;
+                    }
+                };
+                if let Err(err) = s.resubscribe(&clients).await {
+                    warn!("Could not resubscribe to events: {err:?}");
+                    return;
+                };
                 let mut notifications_listener = s.client.notifications();
                 loop {
                     tokio::select! {
                         Ok(SdkEvent::PaymentSucceeded { details: payment }) = sdk_event_listener.recv() => s.forward_payment_to_clients(&payment, &clients).await,
-                        Ok(notification) = notifications_listener.recv() => s.handle_event(&notification, &clients).await,
+                        Ok(notification) = notifications_listener.recv() => s.handle_event(&notification).await,
                         Some(_) = resub_rx.recv() => {
                             info!("URI list has changed. Resubscribing to notifications.");
                             break;
