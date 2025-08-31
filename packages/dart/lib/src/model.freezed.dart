@@ -2381,10 +2381,11 @@ as bool,
 
 
 class SdkEvent_NWC extends SdkEvent {
-  const SdkEvent_NWC({required this.details}): super._();
+  const SdkEvent_NWC({required this.details, required this.eventId}): super._();
   
 
  final  NwcEvent details;
+ final  String eventId;
 
 /// Create a copy of SdkEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -2396,16 +2397,16 @@ $SdkEvent_NWCCopyWith<SdkEvent_NWC> get copyWith => _$SdkEvent_NWCCopyWithImpl<S
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SdkEvent_NWC&&(identical(other.details, details) || other.details == details));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SdkEvent_NWC&&(identical(other.details, details) || other.details == details)&&(identical(other.eventId, eventId) || other.eventId == eventId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,details);
+int get hashCode => Object.hash(runtimeType,details,eventId);
 
 @override
 String toString() {
-  return 'SdkEvent.nwc(details: $details)';
+  return 'SdkEvent.nwc(details: $details, eventId: $eventId)';
 }
 
 
@@ -2416,7 +2417,7 @@ abstract mixin class $SdkEvent_NWCCopyWith<$Res> implements $SdkEventCopyWith<$R
   factory $SdkEvent_NWCCopyWith(SdkEvent_NWC value, $Res Function(SdkEvent_NWC) _then) = _$SdkEvent_NWCCopyWithImpl;
 @useResult
 $Res call({
- NwcEvent details
+ NwcEvent details, String eventId
 });
 
 
@@ -2433,10 +2434,11 @@ class _$SdkEvent_NWCCopyWithImpl<$Res>
 
 /// Create a copy of SdkEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? details = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? details = null,Object? eventId = null,}) {
   return _then(SdkEvent_NWC(
 details: null == details ? _self.details : details // ignore: cast_nullable_to_non_nullable
-as NwcEvent,
+as NwcEvent,eventId: null == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

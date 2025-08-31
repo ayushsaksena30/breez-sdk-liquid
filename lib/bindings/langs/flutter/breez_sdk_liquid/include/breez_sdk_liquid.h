@@ -665,6 +665,7 @@ typedef struct wire_cst_nwc_event {
 
 typedef struct wire_cst_SdkEvent_NWC {
   struct wire_cst_nwc_event *details;
+  struct wire_cst_list_prim_u_8_strict *event_id;
 } wire_cst_SdkEvent_NWC;
 
 typedef union SdkEventKind {

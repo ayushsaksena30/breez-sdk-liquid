@@ -3437,7 +3437,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 9:
         return SdkEvent_DataSynced(didPullNewRecords: dco_decode_bool(raw[1]));
       case 10:
-        return SdkEvent_NWC(details: dco_decode_box_autoadd_nwc_event(raw[1]));
+        return SdkEvent_NWC(
+          details: dco_decode_box_autoadd_nwc_event(raw[1]),
+          eventId: dco_decode_String(raw[2]),
+        );
       default:
         throw Exception("unreachable");
     }
@@ -6002,7 +6005,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return SdkEvent_DataSynced(didPullNewRecords: var_didPullNewRecords);
       case 10:
         var var_details = sse_decode_box_autoadd_nwc_event(deserializer);
-        return SdkEvent_NWC(details: var_details);
+        var var_eventId = sse_decode_String(deserializer);
+        return SdkEvent_NWC(details: var_details, eventId: var_eventId);
       default:
         throw UnimplementedError('');
     }
@@ -8303,9 +8307,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case SdkEvent_DataSynced(didPullNewRecords: final didPullNewRecords):
         sse_encode_i_32(9, serializer);
         sse_encode_bool(didPullNewRecords, serializer);
-      case SdkEvent_NWC(details: final details):
+      case SdkEvent_NWC(details: final details, eventId: final eventId):
         sse_encode_i_32(10, serializer);
         sse_encode_box_autoadd_nwc_event(details, serializer);
+        sse_encode_String(eventId, serializer);
     }
   }
 

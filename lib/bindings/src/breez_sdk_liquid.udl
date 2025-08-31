@@ -724,7 +724,7 @@ interface SdkEvent {
     PaymentWaitingFeeAcceptance(Payment details);
     Synced();
     DataSynced(boolean did_pull_new_records);
-    NWC(NwcEvent details);
+    NWC(NwcEvent details, string event_id);
 };
 
 [Enum]

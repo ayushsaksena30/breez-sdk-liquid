@@ -4935,8 +4935,10 @@ impl SseDecode for crate::model::SdkEvent {
             }
             10 => {
                 let mut var_details = <crate::model::NwcEvent>::sse_decode(deserializer);
+                let mut var_eventId = <String>::sse_decode(deserializer);
                 return crate::model::SdkEvent::NWC {
                     details: var_details,
+                    event_id: var_eventId,
                 };
             }
             _ => {
@@ -7555,9 +7557,12 @@ impl flutter_rust_bridge::IntoDart for crate::model::SdkEvent {
                 did_pull_new_records.into_into_dart().into_dart(),
             ]
             .into_dart(),
-            crate::model::SdkEvent::NWC { details } => {
-                [10.into_dart(), details.into_into_dart().into_dart()].into_dart()
-            }
+            crate::model::SdkEvent::NWC { details, event_id } => [
+                10.into_dart(),
+                details.into_into_dart().into_dart(),
+                event_id.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
             _ => {
                 unimplemented!("");
             }
@@ -9782,9 +9787,10 @@ impl SseEncode for crate::model::SdkEvent {
                 <i32>::sse_encode(9, serializer);
                 <bool>::sse_encode(did_pull_new_records, serializer);
             }
-            crate::model::SdkEvent::NWC { details } => {
+            crate::model::SdkEvent::NWC { details, event_id } => {
                 <i32>::sse_encode(10, serializer);
                 <crate::model::NwcEvent>::sse_encode(details, serializer);
+                <String>::sse_encode(event_id, serializer);
             }
             _ => {
                 unimplemented!("");
@@ -12134,6 +12140,7 @@ mod io {
                     let ans = unsafe { self.kind.NWC };
                     crate::model::SdkEvent::NWC {
                         details: ans.details.cst_decode(),
+                        event_id: ans.event_id.cst_decode(),
                     }
                 }
                 _ => unreachable!(),
@@ -16133,6 +16140,7 @@ mod io {
     #[derive(Clone, Copy)]
     pub struct wire_cst_SdkEvent_NWC {
         details: *mut wire_cst_nwc_event,
+        event_id: *mut wire_cst_list_prim_u_8_strict,
     }
     #[repr(C)]
     #[derive(Clone, Copy)]

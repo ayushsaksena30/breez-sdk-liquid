@@ -5173,6 +5173,8 @@ final class wire_cst_nwc_event extends ffi.Struct {
 
 final class wire_cst_SdkEvent_NWC extends ffi.Struct {
   external ffi.Pointer<wire_cst_nwc_event> details;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> event_id;
 }
 
 final class SdkEventKind extends ffi.Union {

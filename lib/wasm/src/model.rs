@@ -346,7 +346,7 @@ pub enum SdkEvent {
     PaymentWaitingFeeAcceptance { details: Payment },
     Synced,
     DataSynced { did_pull_new_records: bool },
-    NWC { details: NwcEvent },
+    NWC { details: NwcEvent, event_id: String },
 }
 
 #[derive(Clone)]

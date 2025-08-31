@@ -244,7 +244,19 @@ RCT_EXTERN_METHOD(
 )
 
 RCT_EXTERN_METHOD(
-    getNwcUri: (RCTPromiseResolveBlock)resolve
+    newNwcUri: (NSString*)name
+    resolve: (RCTPromiseResolveBlock)resolve
+    reject: (RCTPromiseRejectBlock)reject
+)
+
+RCT_EXTERN_METHOD(
+    listNwcUris: (RCTPromiseResolveBlock)resolve
+    reject: (RCTPromiseRejectBlock)reject
+)
+
+RCT_EXTERN_METHOD(
+    removeNwcUri: (NSString*)name
+    resolve: (RCTPromiseResolveBlock)resolve
     reject: (RCTPromiseRejectBlock)reject
 )
 

@@ -1763,7 +1763,7 @@ sealed class SdkEvent with _$SdkEvent {
     /// Indicates new data was pulled from other instances.
     required bool didPullNewRecords,
   }) = SdkEvent_DataSynced;
-  const factory SdkEvent.nwc({required NwcEvent details}) = SdkEvent_NWC;
+  const factory SdkEvent.nwc({required NwcEvent details, required String eventId}) = SdkEvent_NWC;
 }
 
 @freezed

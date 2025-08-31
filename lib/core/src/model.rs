@@ -542,6 +542,7 @@ pub enum SdkEvent {
     },
     NWC {
         details: NwcEvent,
+        event_id: String,
     },
 }
 

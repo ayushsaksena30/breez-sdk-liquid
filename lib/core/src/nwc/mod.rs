@@ -260,7 +260,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             }
         };
 
-        let _ = self.handle_local_notification(&result, &error).await;
+        let _ = self.handle_local_notification(&result, &error, &event.id.to_string()).await;
 
         let content = match serde_json::to_string(&Response {
             result_type: req.method,
@@ -300,6 +300,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
         &self,
         result: &Option<ResponseResult>,
         error: &Option<NIP47Error>,
+        event_id: &str,
     ) -> Result<()> {
         info!("Handling notification: {result:?} {error:?}");
         let event: SdkEvent = match (result, error) {
@@ -310,6 +311,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
                     fees_sat: response.fees_paid.map(|f| f / 1000),
                     error: None,
                 },
+                event_id: event_id.to_string(),
             },
             (None, Some(error)) => match error.code {
                 ErrorCode::PaymentFailed => SdkEvent::NWC {
@@ -319,6 +321,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
                         fees_sat: None,
                         error: Some(error.message.clone()),
                     },
+                    event_id: event_id.to_string(),
                 },
                 _ => {
                     warn!("Unhandled error code: {:?}", error.code);
@@ -327,9 +330,11 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             },
             (Some(ResponseResult::ListTransactions(_)), None) => SdkEvent::NWC {
                 details: NwcEvent::ListTransactions,
+                event_id: event_id.to_string(),
             },
             (Some(ResponseResult::GetBalance(_)), None) => SdkEvent::NWC {
                 details: NwcEvent::GetBalance,
+                event_id: event_id.to_string(),
             },
             _ => {
                 warn!("Unexpected combination");

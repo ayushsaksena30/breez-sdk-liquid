@@ -4088,8 +4088,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     }
     if (apiObj is SdkEvent_NWC) {
       var pre_details = cst_encode_box_autoadd_nwc_event(apiObj.details);
+      var pre_event_id = cst_encode_String(apiObj.eventId);
       wireObj.tag = 10;
       wireObj.kind.NWC.details = pre_details;
+      wireObj.kind.NWC.event_id = pre_event_id;
       return;
     }
   }
@@ -7511,6 +7513,8 @@ final class wire_cst_nwc_event extends ffi.Struct {
 
 final class wire_cst_SdkEvent_NWC extends ffi.Struct {
   external ffi.Pointer<wire_cst_nwc_event> details;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> event_id;
 }
 
 final class SdkEventKind extends ffi.Union {
