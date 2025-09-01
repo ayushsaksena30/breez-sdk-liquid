@@ -4,6 +4,7 @@ use crate::model::{
 };
 use crate::sdk::LiquidSdk;
 use log::info;
+use maybe_sync::{MaybeSend, MaybeSync};
 use nostr_sdk::nips::nip47::{
     ErrorCode, GetBalanceResponse, ListTransactionsRequest, LookupInvoiceResponse, NIP47Error,
     PayInvoiceRequest, PayInvoiceResponse, TransactionType,
@@ -13,7 +14,8 @@ use sdk_common::utils::Arc;
 
 type Result<T> = std::result::Result<T, NIP47Error>;
 
-pub trait RelayMessageHandler {
+#[sdk_macros::async_trait]
+pub trait RelayMessageHandler: MaybeSend + MaybeSync {
     async fn pay_invoice(&self, req: PayInvoiceRequest) -> Result<PayInvoiceResponse>;
     async fn list_transactions(
         &self,
@@ -50,6 +52,7 @@ impl From<PaymentType> for TransactionType {
     }
 }
 
+#[sdk_macros::async_trait]
 impl RelayMessageHandler for BreezRelayMessageHandler {
     /// Processes a Lightning invoice payment request.
     ///

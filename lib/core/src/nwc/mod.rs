@@ -11,7 +11,7 @@ use crate::{
     utils,
 };
 use anyhow::Result;
-use handler::{BreezRelayMessageHandler, RelayMessageHandler};
+use handler::RelayMessageHandler;
 use log::{info, warn};
 use maybe_sync::{MaybeSend, MaybeSync};
 use nostr_sdk::{
@@ -81,17 +81,17 @@ pub trait NWCService: MaybeSend + MaybeSync {
     async fn stop(&self);
 }
 
-pub struct BreezNWCService<Handler: RelayMessageHandler> {
+pub struct BreezNWCService<H: RelayMessageHandler> {
     keys: Keys,
     config: Config,
     client: NostrClient,
-    handler: Box<Handler>,
+    handler: Box<H>,
     event_manager: Arc<EventManager>,
     persister: std::sync::Arc<Persister>,
     resubscription_trigger: Mutex<Option<mpsc::Sender<()>>>,
 }
 
-impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
+impl<H: RelayMessageHandler> BreezNWCService<H> {
     /// Creates a new BreezNWCService instance.
     ///
     /// Initializes the service with the provided cryptographic keys, handler,
@@ -105,7 +105,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
     /// * `Ok(Arc<BreezNWCService>)` - Successfully initialized service
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
     pub(crate) async fn new(
-        handler: Box<Handler>,
+        handler: Box<H>,
         config: Config,
         persister: std::sync::Arc<Persister>,
         event_manager: Arc<EventManager>,
@@ -187,9 +187,7 @@ impl<Handler: RelayMessageHandler> BreezNWCService<Handler> {
         info!("Successfully subscribed to events");
         Ok(())
     }
-}
 
-impl BreezNWCService<BreezRelayMessageHandler> {
     async fn send_event(&self, eb: EventBuilder) -> Result<(), nostr_sdk::client::Error> {
         let evt = eb.sign_with_keys(&self.keys)?;
         self.client.send_event(&evt).await?;
@@ -260,7 +258,9 @@ impl BreezNWCService<BreezRelayMessageHandler> {
             }
         };
 
-        let _ = self.handle_local_notification(&result, &error, &event.id.to_string()).await;
+        let _ = self
+            .handle_local_notification(&result, &error, &event.id.to_string())
+            .await;
 
         let content = match serde_json::to_string(&Response {
             result_type: req.method,
@@ -442,7 +442,7 @@ impl BreezNWCService<BreezRelayMessageHandler> {
 }
 
 #[sdk_macros::async_trait]
-impl NWCService for BreezNWCService<BreezRelayMessageHandler> {
+impl<H: RelayMessageHandler + 'static> NWCService for BreezNWCService<H> {
     async fn new_connection_string(&self, name: String) -> Result<String> {
         let random_secret_key = nostr_sdk::SecretKey::generate();
         let relays = self
