@@ -44,7 +44,7 @@ pub trait NwcService: MaybeSend + MaybeSync {
     ///
     /// # Arguments
     /// * `name` - The unique identifier for the connection string
-    async fn new_connection_string(&self, name: String) -> Result<String>;
+    async fn add_connection_string(&self, name: String) -> Result<String>;
 
     /// Lists the active Nostr Wallet Connect connections for this service.
     async fn list_connection_strings(&self) -> Result<HashMap<String, String>>;
@@ -443,7 +443,7 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
 
 #[sdk_macros::async_trait]
 impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
-    async fn new_connection_string(&self, name: String) -> Result<String> {
+    async fn add_connection_string(&self, name: String) -> Result<String> {
         let random_secret_key = nostr_sdk::SecretKey::generate();
         let relays = self
             .config

@@ -5047,8 +5047,8 @@ impl LiquidSdk {
     /// Error is thrown when:
     /// - NWC service is not enabled in the configuration
     /// - There's an error generating the connection string
-    pub async fn new_nwc_uri(&self, name: String) -> SdkResult<String> {
-        Ok(self.get_nwc_service()?.new_connection_string(name).await?)
+    pub async fn add_nwc_uri(&self, name: String) -> SdkResult<String> {
+        Ok(self.get_nwc_service()?.add_connection_string(name).await?)
     }
 
     /// Returns a list of the currently active Nostr Wallet Connect (NWC) connection URIs.
