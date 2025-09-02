@@ -35,7 +35,7 @@ pub(crate) mod handler;
 mod persist;
 
 #[sdk_macros::async_trait]
-pub trait NWCService: MaybeSend + MaybeSync {
+pub trait NwcService: MaybeSend + MaybeSync {
     /// Creates a Nostr Wallet Connect connection string for this service.
     ///
     /// Generates a unique connection URI that external applications can use
@@ -81,7 +81,7 @@ pub trait NWCService: MaybeSend + MaybeSync {
     async fn stop(&self);
 }
 
-pub struct BreezNWCService<H: RelayMessageHandler> {
+pub struct SdkNwcService<H: RelayMessageHandler> {
     keys: Keys,
     config: Config,
     client: NostrClient,
@@ -91,8 +91,8 @@ pub struct BreezNWCService<H: RelayMessageHandler> {
     resubscription_trigger: Mutex<Option<mpsc::Sender<()>>>,
 }
 
-impl<H: RelayMessageHandler> BreezNWCService<H> {
-    /// Creates a new BreezNWCService instance.
+impl<H: RelayMessageHandler> SdkNwcService<H> {
+    /// Creates a new SdkNwcService instance.
     ///
     /// Initializes the service with the provided cryptographic keys, handler,
     /// and connects to the specified Nostr relays.
@@ -102,7 +102,7 @@ impl<H: RelayMessageHandler> BreezNWCService<H> {
     /// * `relays` - List of relay URLs to connect to
     ///
     /// # Returns
-    /// * `Ok(Arc<BreezNWCService>)` - Successfully initialized service
+    /// * `Sdkcwc>)` - Successfully initialized service
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
     pub(crate) async fn new(
         handler: Box<H>,
@@ -442,7 +442,7 @@ impl<H: RelayMessageHandler> BreezNWCService<H> {
 }
 
 #[sdk_macros::async_trait]
-impl<H: RelayMessageHandler + 'static> NWCService for BreezNWCService<H> {
+impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
     async fn new_connection_string(&self, name: String) -> Result<String> {
         let random_secret_key = nostr_sdk::SecretKey::generate();
         let relays = self
@@ -469,11 +469,17 @@ impl<H: RelayMessageHandler + 'static> NWCService for BreezNWCService<H> {
 
     fn start(self: Arc<Self>, shutdown: watch::Receiver<()>) -> JoinHandle<()> {
         let s = self.clone();
+        let s_cleanup = self.clone();
         let mut sdk_event_listener = self.event_manager.subscribe();
         let nwc_service_future = async move {
             s.client.connect().await;
 
             info!("Successfully connected NWC client");
+
+            let _ = s.event_manager.notify(SdkEvent::NWC {
+                details: NwcEvent::Connected,
+                event_id: "service_start".to_string(),
+            }).await;
 
             // Broadcast info event
             let mut content: String = [
@@ -529,6 +535,11 @@ impl<H: RelayMessageHandler + 'static> NWCService for BreezNWCService<H> {
                 "Received shutdown signal, exiting NWC service loop",
                 nwc_service_future,
                 || async move {
+                    let _ = s_cleanup.event_manager.notify(SdkEvent::NWC {
+                        details: NwcEvent::Disconnected,
+                        event_id: "service_stop".to_string(),
+                    }).await;
+
                     match tokio::time::timeout(Duration::from_secs(2), self.stop()).await {
                         Ok(_) => {
                             info!("Successfully disconnected NWC client");

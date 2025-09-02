@@ -24,11 +24,11 @@ pub trait RelayMessageHandler: MaybeSend + MaybeSync {
     async fn get_balance(&self) -> Result<GetBalanceResponse>;
 }
 
-pub struct BreezRelayMessageHandler {
+pub struct SdkRelayMessageHandler {
     sdk: Arc<LiquidSdk>,
 }
 
-impl BreezRelayMessageHandler {
+impl SdkRelayMessageHandler {
     pub fn new(sdk: sdk_common::utils::Arc<LiquidSdk>) -> Self {
         Self { sdk }
     }
@@ -53,7 +53,7 @@ impl From<PaymentType> for TransactionType {
 }
 
 #[sdk_macros::async_trait]
-impl RelayMessageHandler for BreezRelayMessageHandler {
+impl RelayMessageHandler for SdkRelayMessageHandler {
     /// Processes a Lightning invoice payment request.
     ///
     /// This method handles the complete payment flow:
