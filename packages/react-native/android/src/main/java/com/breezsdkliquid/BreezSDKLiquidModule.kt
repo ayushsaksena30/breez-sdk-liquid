@@ -607,10 +607,10 @@ class BreezSDKLiquidModule(reactContext: ReactApplicationContext) : ReactContext
     }
     
     @ReactMethod
-    fun newNwcUri(name: String, promise: Promise) {
+    fun addNwcUri(name: String, promise: Promise) {
         executor.execute {
             try {
-                val res = getBindingLiquidSdk().newNwcUri(name)
+                val res = getBindingLiquidSdk().addNwcUri(name)
                 promise.resolve(res)
             } catch (e: Exception) {
                 promise.reject(e.javaClass.simpleName.replace("Exception", "Error"), e.message, e)

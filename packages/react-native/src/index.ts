@@ -1138,8 +1138,8 @@ export const listFiatCurrencies = async (): Promise<FiatCurrency[]> => {
     return response
 }
 
-export const newNwcUri = async (name: string): Promise<string> => {
-    const response = await BreezSDKLiquid.newNwcUri(name)
+export const addNwcUri = async (name: string): Promise<string> => {
+    const response = await BreezSDKLiquid.addNwcUri(name)
     return response
 }
 

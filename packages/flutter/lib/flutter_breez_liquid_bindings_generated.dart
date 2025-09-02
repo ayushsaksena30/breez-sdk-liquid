@@ -79,6 +79,26 @@ class FlutterBreezLiquidBindings {
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_event_listenerPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
+  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_nwc_uri(
+    int port_,
+    int that,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_nwc_uri(
+      port_,
+      that,
+      name,
+    );
+  }
+
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_nwc_uriPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>>(
+      'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_nwc_uri');
+  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_nwc_uri =
+      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_nwc_uriPtr
+          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
+
   WireSyncRust2DartDco frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_backup(
     int that,
     ffi.Pointer<wire_cst_backup_request> req,
@@ -428,26 +448,6 @@ class FlutterBreezLiquidBindings {
   late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_lnurl_withdraw =
       _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_lnurl_withdrawPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_ln_url_withdraw_request>)>();
-
-  void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
-    int port_,
-    int that,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
-  ) {
-    return _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
-      port_,
-      that,
-      name,
-    );
-  }
-
-  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr = _lookup<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>>(
-      'frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri');
-  late final _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri =
-      _frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr
-          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
   void frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_parse(
     int port_,
@@ -5149,7 +5149,7 @@ final class wire_cst_SdkEvent_DataSynced extends ffi.Struct {
   external bool did_pull_new_records;
 }
 
-final class wire_cst_NwcEvent_PayInvoice extends ffi.Struct {
+final class wire_cst_NwcEvent_PayInvoiceHandled extends ffi.Struct {
   @ffi.Bool()
   external bool success;
 
@@ -5161,7 +5161,7 @@ final class wire_cst_NwcEvent_PayInvoice extends ffi.Struct {
 }
 
 final class NwcEventKind extends ffi.Union {
-  external wire_cst_NwcEvent_PayInvoice PayInvoice;
+  external wire_cst_NwcEvent_PayInvoiceHandled PayInvoiceHandled;
 }
 
 final class wire_cst_nwc_event extends ffi.Struct {

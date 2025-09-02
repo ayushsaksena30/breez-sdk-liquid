@@ -204,7 +204,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NwcEvent dco_decode_box_autoadd_nwc_event(dynamic raw);
 
   @protected
-  NWCOptions dco_decode_box_autoadd_nwc_options(dynamic raw);
+  NwcOptions dco_decode_box_autoadd_nwc_options(dynamic raw);
 
   @protected
   PayAmount dco_decode_box_autoadd_pay_amount(dynamic raw);
@@ -474,7 +474,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NwcEvent dco_decode_nwc_event(dynamic raw);
 
   @protected
-  NWCOptions dco_decode_nwc_options(dynamic raw);
+  NwcOptions dco_decode_nwc_options(dynamic raw);
 
   @protected
   OnchainPaymentLimitsResponse dco_decode_onchain_payment_limits_response(dynamic raw);
@@ -504,7 +504,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   LnUrlInfo? dco_decode_opt_box_autoadd_ln_url_info(dynamic raw);
 
   @protected
-  NWCOptions? dco_decode_opt_box_autoadd_nwc_options(dynamic raw);
+  NwcOptions? dco_decode_opt_box_autoadd_nwc_options(dynamic raw);
 
   @protected
   PayAmount? dco_decode_opt_box_autoadd_pay_amount(dynamic raw);
@@ -890,7 +890,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NwcEvent sse_decode_box_autoadd_nwc_event(SseDeserializer deserializer);
 
   @protected
-  NWCOptions sse_decode_box_autoadd_nwc_options(SseDeserializer deserializer);
+  NwcOptions sse_decode_box_autoadd_nwc_options(SseDeserializer deserializer);
 
   @protected
   PayAmount sse_decode_box_autoadd_pay_amount(SseDeserializer deserializer);
@@ -1164,7 +1164,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NwcEvent sse_decode_nwc_event(SseDeserializer deserializer);
 
   @protected
-  NWCOptions sse_decode_nwc_options(SseDeserializer deserializer);
+  NwcOptions sse_decode_nwc_options(SseDeserializer deserializer);
 
   @protected
   OnchainPaymentLimitsResponse sse_decode_onchain_payment_limits_response(SseDeserializer deserializer);
@@ -1194,7 +1194,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   LnUrlInfo? sse_decode_opt_box_autoadd_ln_url_info(SseDeserializer deserializer);
 
   @protected
-  NWCOptions? sse_decode_opt_box_autoadd_nwc_options(SseDeserializer deserializer);
+  NwcOptions? sse_decode_opt_box_autoadd_nwc_options(SseDeserializer deserializer);
 
   @protected
   PayAmount? sse_decode_opt_box_autoadd_pay_amount(SseDeserializer deserializer);
@@ -1746,7 +1746,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   }
 
   @protected
-  ffi.Pointer<wire_cst_nwc_options> cst_encode_box_autoadd_nwc_options(NWCOptions raw) {
+  ffi.Pointer<wire_cst_nwc_options> cst_encode_box_autoadd_nwc_options(NwcOptions raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     final ptr = wire.cst_new_box_autoadd_nwc_options();
     cst_api_fill_to_wire_nwc_options(raw, ptr.ref);
@@ -2180,7 +2180,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   }
 
   @protected
-  ffi.Pointer<wire_cst_nwc_options> cst_encode_opt_box_autoadd_nwc_options(NWCOptions? raw) {
+  ffi.Pointer<wire_cst_nwc_options> cst_encode_opt_box_autoadd_nwc_options(NwcOptions? raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     return raw == null ? ffi.nullptr : cst_encode_box_autoadd_nwc_options(raw);
   }
@@ -2676,7 +2676,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void cst_api_fill_to_wire_box_autoadd_nwc_options(
-    NWCOptions apiObj,
+    NwcOptions apiObj,
     ffi.Pointer<wire_cst_nwc_options> wireObj,
   ) {
     cst_api_fill_to_wire_nwc_options(apiObj, wireObj.ref);
@@ -3483,38 +3483,38 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void cst_api_fill_to_wire_nwc_event(NwcEvent apiObj, wire_cst_nwc_event wireObj) {
-    if (apiObj is NwcEvent_Connected) {
+    if (apiObj is NwcEvent_ConnectedHandled) {
       wireObj.tag = 0;
       return;
     }
-    if (apiObj is NwcEvent_Disconnected) {
+    if (apiObj is NwcEvent_DisconnectedHandled) {
       wireObj.tag = 1;
       return;
     }
-    if (apiObj is NwcEvent_PayInvoice) {
+    if (apiObj is NwcEvent_PayInvoiceHandled) {
       var pre_success = cst_encode_bool(apiObj.success);
       var pre_preimage = cst_encode_opt_String(apiObj.preimage);
       var pre_fees_sat = cst_encode_opt_box_autoadd_u_64(apiObj.feesSat);
       var pre_error = cst_encode_opt_String(apiObj.error);
       wireObj.tag = 2;
-      wireObj.kind.PayInvoice.success = pre_success;
-      wireObj.kind.PayInvoice.preimage = pre_preimage;
-      wireObj.kind.PayInvoice.fees_sat = pre_fees_sat;
-      wireObj.kind.PayInvoice.error = pre_error;
+      wireObj.kind.PayInvoiceHandled.success = pre_success;
+      wireObj.kind.PayInvoiceHandled.preimage = pre_preimage;
+      wireObj.kind.PayInvoiceHandled.fees_sat = pre_fees_sat;
+      wireObj.kind.PayInvoiceHandled.error = pre_error;
       return;
     }
-    if (apiObj is NwcEvent_ListTransactions) {
+    if (apiObj is NwcEvent_ListTransactionsHandled) {
       wireObj.tag = 3;
       return;
     }
-    if (apiObj is NwcEvent_GetBalance) {
+    if (apiObj is NwcEvent_GetBalanceHandled) {
       wireObj.tag = 4;
       return;
     }
   }
 
   @protected
-  void cst_api_fill_to_wire_nwc_options(NWCOptions apiObj, wire_cst_nwc_options wireObj) {
+  void cst_api_fill_to_wire_nwc_options(NwcOptions apiObj, wire_cst_nwc_options wireObj) {
     wireObj.enabled = cst_encode_bool(apiObj.enabled);
     wireObj.relay_urls = cst_encode_opt_list_String(apiObj.relayUrls);
     wireObj.secret_key = cst_encode_opt_String(apiObj.secretKey);
@@ -4500,7 +4500,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_nwc_event(NwcEvent self, SseSerializer serializer);
 
   @protected
-  void sse_encode_box_autoadd_nwc_options(NWCOptions self, SseSerializer serializer);
+  void sse_encode_box_autoadd_nwc_options(NwcOptions self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_pay_amount(PayAmount self, SseSerializer serializer);
@@ -4788,7 +4788,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_nwc_event(NwcEvent self, SseSerializer serializer);
 
   @protected
-  void sse_encode_nwc_options(NWCOptions self, SseSerializer serializer);
+  void sse_encode_nwc_options(NwcOptions self, SseSerializer serializer);
 
   @protected
   void sse_encode_onchain_payment_limits_response(
@@ -4821,7 +4821,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_ln_url_info(LnUrlInfo? self, SseSerializer serializer);
 
   @protected
-  void sse_encode_opt_box_autoadd_nwc_options(NWCOptions? self, SseSerializer serializer);
+  void sse_encode_opt_box_autoadd_nwc_options(NwcOptions? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_pay_amount(PayAmount? self, SseSerializer serializer);
@@ -5082,6 +5082,21 @@ class RustLibWire implements BaseWire {
       _wire__crate__bindings__BindingLiquidSdk_add_event_listenerPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
+  void wire__crate__bindings__BindingLiquidSdk_add_nwc_uri(
+    int port_,
+    int that,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _wire__crate__bindings__BindingLiquidSdk_add_nwc_uri(port_, that, name);
+  }
+
+  late final _wire__crate__bindings__BindingLiquidSdk_add_nwc_uriPtr = _lookup<
+    ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>
+  >('frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_add_nwc_uri');
+  late final _wire__crate__bindings__BindingLiquidSdk_add_nwc_uri =
+      _wire__crate__bindings__BindingLiquidSdk_add_nwc_uriPtr
+          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
+
   WireSyncRust2DartDco wire__crate__bindings__BindingLiquidSdk_backup(
     int that,
     ffi.Pointer<wire_cst_backup_request> req,
@@ -5340,21 +5355,6 @@ class RustLibWire implements BaseWire {
   late final _wire__crate__bindings__BindingLiquidSdk_lnurl_withdraw =
       _wire__crate__bindings__BindingLiquidSdk_lnurl_withdrawPtr
           .asFunction<void Function(int, int, ffi.Pointer<wire_cst_ln_url_withdraw_request>)>();
-
-  void wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(
-    int port_,
-    int that,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
-  ) {
-    return _wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(port_, that, name);
-  }
-
-  late final _wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr = _lookup<
-    ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>
-  >('frbgen_breez_liquid_wire__crate__bindings__BindingLiquidSdk_new_nwc_uri');
-  late final _wire__crate__bindings__BindingLiquidSdk_new_nwc_uri =
-      _wire__crate__bindings__BindingLiquidSdk_new_nwc_uriPtr
-          .asFunction<void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)>();
 
   void wire__crate__bindings__BindingLiquidSdk_parse(
     int port_,
@@ -7489,7 +7489,7 @@ final class wire_cst_SdkEvent_DataSynced extends ffi.Struct {
   external bool did_pull_new_records;
 }
 
-final class wire_cst_NwcEvent_PayInvoice extends ffi.Struct {
+final class wire_cst_NwcEvent_PayInvoiceHandled extends ffi.Struct {
   @ffi.Bool()
   external bool success;
 
@@ -7501,7 +7501,7 @@ final class wire_cst_NwcEvent_PayInvoice extends ffi.Struct {
 }
 
 final class NwcEventKind extends ffi.Union {
-  external wire_cst_NwcEvent_PayInvoice PayInvoice;
+  external wire_cst_NwcEvent_PayInvoiceHandled PayInvoiceHandled;
 }
 
 final class wire_cst_nwc_event extends ffi.Struct {

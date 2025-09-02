@@ -53,7 +53,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.9.0';
 
   @override
-  int get rustContentHash => 1816470161;
+  int get rustContentHash => -490515056;
 
   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'breez_sdk_liquid',
@@ -69,6 +69,11 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Stream<SdkEvent> crateBindingsBindingLiquidSdkAddEventListener({required BindingLiquidSdk that});
+
+  Future<String> crateBindingsBindingLiquidSdkAddNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
+  });
 
   void crateBindingsBindingLiquidSdkBackup({required BindingLiquidSdk that, required BackupRequest req});
 
@@ -139,11 +144,6 @@ abstract class RustLibApi extends BaseApi {
   Future<LnUrlWithdrawResult> crateBindingsBindingLiquidSdkLnurlWithdraw({
     required BindingLiquidSdk that,
     required LnUrlWithdrawRequest req,
-  });
-
-  Future<String> crateBindingsBindingLiquidSdkNewNwcUri({
-    required BindingLiquidSdk that,
-    required String name,
   });
 
   Future<InputType> crateBindingsBindingLiquidSdkParse({
@@ -308,6 +308,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateBindingsBindingLiquidSdkAddEventListenerConstMeta =>
       const TaskConstMeta(debugName: "BindingLiquidSdk_add_event_listener", argNames: ["that", "listener"]);
+
+  @override
+  Future<String> crateBindingsBindingLiquidSdkAddNwcUri({
+    required BindingLiquidSdk that,
+    required String name,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
+                that,
+              );
+          var arg1 = cst_encode_String(name);
+          return wire.wire__crate__bindings__BindingLiquidSdk_add_nwc_uri(port_, arg0, arg1);
+        },
+        codec: DcoCodec(decodeSuccessData: dco_decode_String, decodeErrorData: dco_decode_sdk_error),
+        constMeta: kCrateBindingsBindingLiquidSdkAddNwcUriConstMeta,
+        argValues: [that, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateBindingsBindingLiquidSdkAddNwcUriConstMeta =>
+      const TaskConstMeta(debugName: "BindingLiquidSdk_add_nwc_uri", argNames: ["that", "name"]);
 
   @override
   void crateBindingsBindingLiquidSdkBackup({required BindingLiquidSdk that, required BackupRequest req}) {
@@ -815,32 +841,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateBindingsBindingLiquidSdkLnurlWithdrawConstMeta =>
       const TaskConstMeta(debugName: "BindingLiquidSdk_lnurl_withdraw", argNames: ["that", "req"]);
-
-  @override
-  Future<String> crateBindingsBindingLiquidSdkNewNwcUri({
-    required BindingLiquidSdk that,
-    required String name,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          var arg0 =
-              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBindingLiquidSdk(
-                that,
-              );
-          var arg1 = cst_encode_String(name);
-          return wire.wire__crate__bindings__BindingLiquidSdk_new_nwc_uri(port_, arg0, arg1);
-        },
-        codec: DcoCodec(decodeSuccessData: dco_decode_String, decodeErrorData: dco_decode_sdk_error),
-        constMeta: kCrateBindingsBindingLiquidSdkNewNwcUriConstMeta,
-        argValues: [that, name],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateBindingsBindingLiquidSdkNewNwcUriConstMeta =>
-      const TaskConstMeta(debugName: "BindingLiquidSdk_new_nwc_uri", argNames: ["that", "name"]);
 
   @override
   Future<InputType> crateBindingsBindingLiquidSdkParse({
@@ -1899,7 +1899,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NWCOptions dco_decode_box_autoadd_nwc_options(dynamic raw) {
+  NwcOptions dco_decode_box_autoadd_nwc_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_nwc_options(raw);
   }
@@ -2766,31 +2766,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
       case 0:
-        return NwcEvent_Connected();
+        return NwcEvent_ConnectedHandled();
       case 1:
-        return NwcEvent_Disconnected();
+        return NwcEvent_DisconnectedHandled();
       case 2:
-        return NwcEvent_PayInvoice(
+        return NwcEvent_PayInvoiceHandled(
           success: dco_decode_bool(raw[1]),
           preimage: dco_decode_opt_String(raw[2]),
           feesSat: dco_decode_opt_box_autoadd_u_64(raw[3]),
           error: dco_decode_opt_String(raw[4]),
         );
       case 3:
-        return NwcEvent_ListTransactions();
+        return NwcEvent_ListTransactionsHandled();
       case 4:
-        return NwcEvent_GetBalance();
+        return NwcEvent_GetBalanceHandled();
       default:
         throw Exception("unreachable");
     }
   }
 
   @protected
-  NWCOptions dco_decode_nwc_options(dynamic raw) {
+  NwcOptions dco_decode_nwc_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return NWCOptions(
+    return NwcOptions(
       enabled: dco_decode_bool(arr[0]),
       relayUrls: dco_decode_opt_list_String(arr[1]),
       secretKey: dco_decode_opt_String(arr[2]),
@@ -2854,7 +2854,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NWCOptions? dco_decode_opt_box_autoadd_nwc_options(dynamic raw) {
+  NwcOptions? dco_decode_opt_box_autoadd_nwc_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_nwc_options(raw);
   }
@@ -4074,7 +4074,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NWCOptions sse_decode_box_autoadd_nwc_options(SseDeserializer deserializer) {
+  NwcOptions sse_decode_box_autoadd_nwc_options(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_nwc_options(deserializer));
   }
@@ -5128,36 +5128,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var tag_ = sse_decode_i_32(deserializer);
     switch (tag_) {
       case 0:
-        return NwcEvent_Connected();
+        return NwcEvent_ConnectedHandled();
       case 1:
-        return NwcEvent_Disconnected();
+        return NwcEvent_DisconnectedHandled();
       case 2:
         var var_success = sse_decode_bool(deserializer);
         var var_preimage = sse_decode_opt_String(deserializer);
         var var_feesSat = sse_decode_opt_box_autoadd_u_64(deserializer);
         var var_error = sse_decode_opt_String(deserializer);
-        return NwcEvent_PayInvoice(
+        return NwcEvent_PayInvoiceHandled(
           success: var_success,
           preimage: var_preimage,
           feesSat: var_feesSat,
           error: var_error,
         );
       case 3:
-        return NwcEvent_ListTransactions();
+        return NwcEvent_ListTransactionsHandled();
       case 4:
-        return NwcEvent_GetBalance();
+        return NwcEvent_GetBalanceHandled();
       default:
         throw UnimplementedError('');
     }
   }
 
   @protected
-  NWCOptions sse_decode_nwc_options(SseDeserializer deserializer) {
+  NwcOptions sse_decode_nwc_options(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_enabled = sse_decode_bool(deserializer);
     var var_relayUrls = sse_decode_opt_list_String(deserializer);
     var var_secretKey = sse_decode_opt_String(deserializer);
-    return NWCOptions(enabled: var_enabled, relayUrls: var_relayUrls, secretKey: var_secretKey);
+    return NwcOptions(enabled: var_enabled, relayUrls: var_relayUrls, secretKey: var_secretKey);
   }
 
   @protected
@@ -5257,7 +5257,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NWCOptions? sse_decode_opt_box_autoadd_nwc_options(SseDeserializer deserializer) {
+  NwcOptions? sse_decode_opt_box_autoadd_nwc_options(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
@@ -6730,7 +6730,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_box_autoadd_nwc_options(NWCOptions self, SseSerializer serializer) {
+  void sse_encode_box_autoadd_nwc_options(NwcOptions self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_nwc_options(self, serializer);
   }
@@ -7579,11 +7579,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_nwc_event(NwcEvent self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case NwcEvent_Connected():
+      case NwcEvent_ConnectedHandled():
         sse_encode_i_32(0, serializer);
-      case NwcEvent_Disconnected():
+      case NwcEvent_DisconnectedHandled():
         sse_encode_i_32(1, serializer);
-      case NwcEvent_PayInvoice(
+      case NwcEvent_PayInvoiceHandled(
         success: final success,
         preimage: final preimage,
         feesSat: final feesSat,
@@ -7594,15 +7594,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_opt_String(preimage, serializer);
         sse_encode_opt_box_autoadd_u_64(feesSat, serializer);
         sse_encode_opt_String(error, serializer);
-      case NwcEvent_ListTransactions():
+      case NwcEvent_ListTransactionsHandled():
         sse_encode_i_32(3, serializer);
-      case NwcEvent_GetBalance():
+      case NwcEvent_GetBalanceHandled():
         sse_encode_i_32(4, serializer);
     }
   }
 
   @protected
-  void sse_encode_nwc_options(NWCOptions self, SseSerializer serializer) {
+  void sse_encode_nwc_options(NwcOptions self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_bool(self.enabled, serializer);
     sse_encode_opt_list_String(self.relayUrls, serializer);
@@ -7700,7 +7700,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_opt_box_autoadd_nwc_options(NWCOptions? self, SseSerializer serializer) {
+  void sse_encode_opt_box_autoadd_nwc_options(NwcOptions? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
@@ -8482,6 +8482,9 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
   Stream<SdkEvent> addEventListener() =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkAddEventListener(that: this);
 
+  Future<String> addNwcUri({required String name}) =>
+      RustLib.instance.api.crateBindingsBindingLiquidSdkAddNwcUri(that: this, name: name);
+
   void backup({required BackupRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkBackup(that: this, req: req);
 
@@ -8536,9 +8539,6 @@ class BindingLiquidSdkImpl extends RustOpaque implements BindingLiquidSdk {
 
   Future<LnUrlWithdrawResult> lnurlWithdraw({required LnUrlWithdrawRequest req}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkLnurlWithdraw(that: this, req: req);
-
-  Future<String> newNwcUri({required String name}) =>
-      RustLib.instance.api.crateBindingsBindingLiquidSdkNewNwcUri(that: this, name: name);
 
   Future<InputType> parse({required String input}) =>
       RustLib.instance.api.crateBindingsBindingLiquidSdkParse(that: this, input: input);

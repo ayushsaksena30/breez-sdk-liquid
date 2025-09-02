@@ -536,10 +536,10 @@ class RNBreezSDKLiquid: RCTEventEmitter {
         }
     }
     
-    @objc(newNwcUri:resolve:reject:)
-    func newNwcUri(_ name: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) -> Void {
+    @objc(addNwcUri:resolve:reject:)
+    func addNwcUri(_ name: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) -> Void {
         do {
-            var res =try getBindingLiquidSdk().newNwcUri(name: name)
+            var res =try getBindingLiquidSdk().addNwcUri(name: name)
             resolve(res)
         } catch let err {
             rejectErr(err: err, reject: reject)

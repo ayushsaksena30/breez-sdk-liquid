@@ -802,8 +802,8 @@ $NwcEventCopyWith(NwcEvent _, $Res Function(NwcEvent) __);
 /// @nodoc
 
 
-class NwcEvent_Connected extends NwcEvent {
-  const NwcEvent_Connected(): super._();
+class NwcEvent_ConnectedHandled extends NwcEvent {
+  const NwcEvent_ConnectedHandled(): super._();
   
 
 
@@ -813,7 +813,7 @@ class NwcEvent_Connected extends NwcEvent {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_Connected);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_ConnectedHandled);
 }
 
 
@@ -822,7 +822,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NwcEvent.connected()';
+  return 'NwcEvent.connectedHandled()';
 }
 
 
@@ -834,8 +834,8 @@ String toString() {
 /// @nodoc
 
 
-class NwcEvent_Disconnected extends NwcEvent {
-  const NwcEvent_Disconnected(): super._();
+class NwcEvent_DisconnectedHandled extends NwcEvent {
+  const NwcEvent_DisconnectedHandled(): super._();
   
 
 
@@ -845,7 +845,7 @@ class NwcEvent_Disconnected extends NwcEvent {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_Disconnected);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_DisconnectedHandled);
 }
 
 
@@ -854,7 +854,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NwcEvent.disconnected()';
+  return 'NwcEvent.disconnectedHandled()';
 }
 
 
@@ -866,8 +866,8 @@ String toString() {
 /// @nodoc
 
 
-class NwcEvent_PayInvoice extends NwcEvent {
-  const NwcEvent_PayInvoice({required this.success, this.preimage, this.feesSat, this.error}): super._();
+class NwcEvent_PayInvoiceHandled extends NwcEvent {
+  const NwcEvent_PayInvoiceHandled({required this.success, this.preimage, this.feesSat, this.error}): super._();
   
 
  final  bool success;
@@ -879,13 +879,13 @@ class NwcEvent_PayInvoice extends NwcEvent {
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$NwcEvent_PayInvoiceCopyWith<NwcEvent_PayInvoice> get copyWith => _$NwcEvent_PayInvoiceCopyWithImpl<NwcEvent_PayInvoice>(this, _$identity);
+$NwcEvent_PayInvoiceHandledCopyWith<NwcEvent_PayInvoiceHandled> get copyWith => _$NwcEvent_PayInvoiceHandledCopyWithImpl<NwcEvent_PayInvoiceHandled>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_PayInvoice&&(identical(other.success, success) || other.success == success)&&(identical(other.preimage, preimage) || other.preimage == preimage)&&(identical(other.feesSat, feesSat) || other.feesSat == feesSat)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_PayInvoiceHandled&&(identical(other.success, success) || other.success == success)&&(identical(other.preimage, preimage) || other.preimage == preimage)&&(identical(other.feesSat, feesSat) || other.feesSat == feesSat)&&(identical(other.error, error) || other.error == error));
 }
 
 
@@ -894,15 +894,15 @@ int get hashCode => Object.hash(runtimeType,success,preimage,feesSat,error);
 
 @override
 String toString() {
-  return 'NwcEvent.payInvoice(success: $success, preimage: $preimage, feesSat: $feesSat, error: $error)';
+  return 'NwcEvent.payInvoiceHandled(success: $success, preimage: $preimage, feesSat: $feesSat, error: $error)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $NwcEvent_PayInvoiceCopyWith<$Res> implements $NwcEventCopyWith<$Res> {
-  factory $NwcEvent_PayInvoiceCopyWith(NwcEvent_PayInvoice value, $Res Function(NwcEvent_PayInvoice) _then) = _$NwcEvent_PayInvoiceCopyWithImpl;
+abstract mixin class $NwcEvent_PayInvoiceHandledCopyWith<$Res> implements $NwcEventCopyWith<$Res> {
+  factory $NwcEvent_PayInvoiceHandledCopyWith(NwcEvent_PayInvoiceHandled value, $Res Function(NwcEvent_PayInvoiceHandled) _then) = _$NwcEvent_PayInvoiceHandledCopyWithImpl;
 @useResult
 $Res call({
  bool success, String? preimage, BigInt? feesSat, String? error
@@ -913,17 +913,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$NwcEvent_PayInvoiceCopyWithImpl<$Res>
-    implements $NwcEvent_PayInvoiceCopyWith<$Res> {
-  _$NwcEvent_PayInvoiceCopyWithImpl(this._self, this._then);
+class _$NwcEvent_PayInvoiceHandledCopyWithImpl<$Res>
+    implements $NwcEvent_PayInvoiceHandledCopyWith<$Res> {
+  _$NwcEvent_PayInvoiceHandledCopyWithImpl(this._self, this._then);
 
-  final NwcEvent_PayInvoice _self;
-  final $Res Function(NwcEvent_PayInvoice) _then;
+  final NwcEvent_PayInvoiceHandled _self;
+  final $Res Function(NwcEvent_PayInvoiceHandled) _then;
 
 /// Create a copy of NwcEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? success = null,Object? preimage = freezed,Object? feesSat = freezed,Object? error = freezed,}) {
-  return _then(NwcEvent_PayInvoice(
+  return _then(NwcEvent_PayInvoiceHandled(
 success: null == success ? _self.success : success // ignore: cast_nullable_to_non_nullable
 as bool,preimage: freezed == preimage ? _self.preimage : preimage // ignore: cast_nullable_to_non_nullable
 as String?,feesSat: freezed == feesSat ? _self.feesSat : feesSat // ignore: cast_nullable_to_non_nullable
@@ -938,8 +938,8 @@ as String?,
 /// @nodoc
 
 
-class NwcEvent_ListTransactions extends NwcEvent {
-  const NwcEvent_ListTransactions(): super._();
+class NwcEvent_ListTransactionsHandled extends NwcEvent {
+  const NwcEvent_ListTransactionsHandled(): super._();
   
 
 
@@ -949,7 +949,7 @@ class NwcEvent_ListTransactions extends NwcEvent {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_ListTransactions);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_ListTransactionsHandled);
 }
 
 
@@ -958,7 +958,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NwcEvent.listTransactions()';
+  return 'NwcEvent.listTransactionsHandled()';
 }
 
 
@@ -970,8 +970,8 @@ String toString() {
 /// @nodoc
 
 
-class NwcEvent_GetBalance extends NwcEvent {
-  const NwcEvent_GetBalance(): super._();
+class NwcEvent_GetBalanceHandled extends NwcEvent {
+  const NwcEvent_GetBalanceHandled(): super._();
   
 
 
@@ -981,7 +981,7 @@ class NwcEvent_GetBalance extends NwcEvent {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_GetBalance);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NwcEvent_GetBalanceHandled);
 }
 
 
@@ -990,7 +990,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NwcEvent.getBalance()';
+  return 'NwcEvent.getBalanceHandled()';
 }
 
 
