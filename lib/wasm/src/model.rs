@@ -851,14 +851,14 @@ pub struct AcceptPaymentProposedFeesRequest {
 
 #[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid::prelude::NwcEvent)]
 pub enum NwcEvent {
-    Connected,
-    Disconnected,
-    PayInvoice {
+    ConnectedHandled,
+    DisconnectedHandled,
+    PayInvoiceHandled {
         success: bool,
         preimage: Option<String>,
         fees_sat: Option<u64>,
         error: Option<String>,
     },
-    ListTransactions,
-    GetBalance,
+    ListTransactionsHandled,
+    GetBalanceHandled,
 }

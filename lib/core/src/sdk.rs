@@ -97,6 +97,12 @@ pub const DEFAULT_EXTERNAL_INPUT_PARSERS: &[(&str, &str, &str)] = &[
     ),
 ];
 
+/// Default Nostr relays used by the NWC service.
+pub const DEFAULT_NWC_RELAYS: &[&str] = &[
+    "wss://relay.damus.io",
+    "wss://nostr-pub.wellorder.net",
+];
+
 pub(crate) const NETWORK_PROPAGATION_GRACE_PERIOD: Duration = Duration::from_secs(120);
 
 pub struct LiquidSdkBuilder {

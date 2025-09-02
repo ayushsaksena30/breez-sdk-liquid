@@ -396,9 +396,9 @@ impl BindingLiquidSdk {
         Ok(())
     }
 
-    #[wasm_bindgen(js_name = "newNwcUri")]
-    pub async fn new_nwc_uri(&self, name: String) -> WasmResult<String> {
-        Ok(self.sdk.new_nwc_uri(name).await?)
+    #[wasm_bindgen(js_name = "addNwcUri")]
+    pub async fn add_nwc_uri(&self, name: String) -> WasmResult<String> {
+        Ok(self.sdk.add_nwc_uri(name).await?)
     }
 
     #[wasm_bindgen(js_name = "listNwcUris")]

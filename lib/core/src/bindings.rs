@@ -134,8 +134,8 @@ impl BindingLiquidSdk {
         self.sdk.receive_payment(&req).await
     }
 
-    pub async fn new_nwc_uri(&self, name: String) -> Result<String, SdkError> {
-        self.sdk.new_nwc_uri(name).await
+    pub async fn add_nwc_uri(&self, name: String) -> Result<String, SdkError> {
+        self.sdk.add_nwc_uri(name).await
     }
 
     pub async fn list_nwc_uris(&self) -> Result<HashMap<String, String>, SdkError> {

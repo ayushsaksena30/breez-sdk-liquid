@@ -12,7 +12,7 @@ use crate::{
 };
 use anyhow::Result;
 use handler::RelayMessageHandler;
-use log::{info, warn};
+use log::{info, warn, debug};
 use maybe_sync::{MaybeSend, MaybeSync};
 use nostr_sdk::{
     nips::nip44::{decrypt, encrypt, Version},
@@ -129,7 +129,7 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         }))
     }
 
-    fn get_or_create_secret_key(config: &Config, p: &Persister) -> Result<String> {
+    fn get_or_create_secret_key(config: &Config, persister: &Persister) -> Result<String> {
         // If we have a key from the configuration, use it
         if let Some(key) = config
             .nwc_options
@@ -140,13 +140,13 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         }
 
         // Otherwise, try restoring it from the previous session
-        if let Ok(Some(key)) = p.get_nwc_seckey() {
+        if let Ok(Some(key)) = persister.get_nwc_seckey() {
             return Ok(key);
         }
 
         // If none exists, generate a new one
         let key = nostr_sdk::key::SecretKey::generate().to_secret_hex();
-        p.set_nwc_seckey(key.clone())?;
+        persister.set_nwc_seckey(key.clone())?;
         Ok(key)
     }
 
@@ -188,14 +188,14 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         Ok(())
     }
 
-    async fn send_event(&self, eb: EventBuilder) -> Result<(), nostr_sdk::client::Error> {
-        let evt = eb.sign_with_keys(&self.keys)?;
-        self.client.send_event(&evt).await?;
+    async fn send_event(&self, event_builder: EventBuilder) -> Result<(), nostr_sdk::client::Error> {
+        let event = event_builder.sign_with_keys(&self.keys)?;
+        self.client.send_event(&event).await?;
         Ok(())
     }
 
-    async fn handle_event(&self, n: &RelayPoolNotification) {
-        let RelayPoolNotification::Event { event, .. } = n else {
+    async fn handle_event(&self, notification: &RelayPoolNotification) {
+        let RelayPoolNotification::Event { event, .. } = notification else {
             return;
         };
         info!("Received NWC event: {event:?}");
@@ -258,8 +258,7 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
             }
         };
 
-        let _ = self
-            .handle_local_notification(&result, &error, &event.id.to_string())
+        self.handle_local_notification(&result, &error, &event.id.to_string())
             .await;
 
         let content = match serde_json::to_string(&Response {
@@ -288,9 +287,9 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
             }
         };
 
-        let eb = EventBuilder::new(Kind::WalletConnectResponse, encrypted_content)
+        let event_builder = EventBuilder::new(Kind::WalletConnectResponse, encrypted_content)
             .tags([Tag::event(event.id), Tag::public_key(client_pubkey)]);
-        if let Err(e) = self.send_event(eb).await {
+        if let Err(e) = self.send_event(event_builder).await {
             warn!("Could not send response event to relay pool: {e:?}");
         }
         info!("sent encrypted NWC response");
@@ -301,11 +300,11 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         result: &Option<ResponseResult>,
         error: &Option<NIP47Error>,
         event_id: &str,
-    ) -> Result<()> {
-        info!("Handling notification: {result:?} {error:?}");
+    ) {
+        debug!("Handling notification: {result:?} {error:?}");
         let event: SdkEvent = match (result, error) {
             (Some(ResponseResult::PayInvoice(response)), None) => SdkEvent::NWC {
-                details: NwcEvent::PayInvoice {
+                details: NwcEvent::PayInvoiceHandled {
                     success: true,
                     preimage: Some(response.preimage.clone()),
                     fees_sat: response.fees_paid.map(|f| f / 1000),
@@ -315,7 +314,7 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
             },
             (None, Some(error)) => match error.code {
                 ErrorCode::PaymentFailed => SdkEvent::NWC {
-                    details: NwcEvent::PayInvoice {
+                    details: NwcEvent::PayInvoiceHandled {
                         success: false,
                         preimage: None,
                         fees_sat: None,
@@ -325,33 +324,33 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
                 },
                 _ => {
                     warn!("Unhandled error code: {:?}", error.code);
-                    return Ok(());
+                    return;
                 }
             },
             (Some(ResponseResult::ListTransactions(_)), None) => SdkEvent::NWC {
-                details: NwcEvent::ListTransactions,
+                details: NwcEvent::ListTransactionsHandled,
                 event_id: event_id.to_string(),
             },
             (Some(ResponseResult::GetBalance(_)), None) => SdkEvent::NWC {
-                details: NwcEvent::GetBalance,
+                details: NwcEvent::GetBalanceHandled,
                 event_id: event_id.to_string(),
             },
             _ => {
                 warn!("Unexpected combination");
-                return Ok(());
+                return;
             }
         };
         info!("Sending event: {event:?}");
         self.event_manager.notify(event).await;
-        Ok(())
+        
     }
 
     async fn forward_payment_to_clients(
         &self,
-        p: &Payment,
+        payment: &Payment,
         clients: &HashMap<String, NostrWalletConnectURI>,
     ) {
-        let (invoice, description, preimage, payment_hash) = match &p.details {
+        let (invoice, description, preimage, payment_hash) = match &payment.details {
             crate::model::PaymentDetails::Lightning {
                 invoice,
                 description,
@@ -370,7 +369,7 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         };
 
         let payment_notification = PaymentNotification {
-            transaction_type: Some(if p.payment_type == crate::model::PaymentType::Send {
+            transaction_type: Some(if payment.payment_type == crate::model::PaymentType::Send {
                 TransactionType::Outgoing
             } else {
                 TransactionType::Incoming
@@ -380,15 +379,15 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
             description_hash: None,
             preimage,
             payment_hash,
-            amount: p.amount_sat * 1000,
-            fees_paid: p.fees_sat * 1000,
-            created_at: Timestamp::from_secs(p.timestamp as u64),
+            amount: payment.amount_sat * 1000,
+            fees_paid: payment.fees_sat * 1000,
+            created_at: Timestamp::from_secs(payment.timestamp as u64),
             expires_at: None,
-            settled_at: Timestamp::from_secs(p.timestamp as u64),
+            settled_at: Timestamp::from_secs(payment.timestamp as u64),
             metadata: None,
         };
 
-        let notification = if p.payment_type == crate::model::PaymentType::Send {
+        let notification = if payment.payment_type == crate::model::PaymentType::Send {
             Notification {
                 notification_type: NotificationType::PaymentSent,
                 notification: NotificationResult::PaymentSent(payment_notification),
@@ -423,10 +422,10 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
                 }
             };
 
-            let eb = EventBuilder::new(Kind::Custom(23196), encrypted_content)
+            let event_builder = EventBuilder::new(Kind::Custom(23196), encrypted_content)
                 .tags([Tag::public_key(uri.public_key)]);
 
-            if let Err(e) = self.send_event(eb).await {
+            if let Err(e) = self.send_event(event_builder).await {
                 warn!("Could not send notification event to relay: {e:?}");
             } else {
                 info!("Sent payment notification to relay");
@@ -477,7 +476,7 @@ impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
             info!("Successfully connected NWC client");
 
             let _ = s.event_manager.notify(SdkEvent::NWC {
-                details: NwcEvent::Connected,
+                details: NwcEvent::ConnectedHandled,
                 event_id: "service_start".to_string(),
             }).await;
 
@@ -521,7 +520,7 @@ impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
                         Ok(SdkEvent::PaymentSucceeded { details: payment }) = sdk_event_listener.recv() => s.forward_payment_to_clients(&payment, &clients).await,
                         Ok(notification) = notifications_listener.recv() => s.handle_event(&notification).await,
                         Some(_) = resub_rx.recv() => {
-                            info!("URI list has changed. Resubscribing to notifications.");
+                            info!("Resubscribing to notifications.");
                             break;
                         }
                     }
@@ -536,7 +535,7 @@ impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
                 nwc_service_future,
                 || async move {
                     let _ = s_cleanup.event_manager.notify(SdkEvent::NWC {
-                        details: NwcEvent::Disconnected,
+                        details: NwcEvent::DisconnectedHandled,
                         event_id: "service_stop".to_string(),
                     }).await;
 

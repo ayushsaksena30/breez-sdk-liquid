@@ -390,6 +390,10 @@ impl Config {
         }
     }
 
+    /// Returns the list of Nostr relays to use for NWC.
+    ///
+    /// If not configured, falls back to
+    /// [DEFAULT_NWC_RELAYS](crate::sdk::DEFAULT_NWC_RELAYS).
     pub(crate) fn nwc_relays(&self) -> Vec<String> {
         match self
             .nwc_options
@@ -397,10 +401,7 @@ impl Config {
             .and_then(|options| options.relay_urls.clone())
         {
             Some(relays) => relays,
-            None => vec![
-                "wss://relay.damus.io".to_string(),
-                "wss://nostr-pub.wellorder.net".to_string(),
-            ],
+            None => crate::sdk::DEFAULT_NWC_RELAYS.iter().map(|s| s.to_string()).collect(),
         }
     }
 }
@@ -548,16 +549,16 @@ pub enum SdkEvent {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NwcEvent {
-    Connected,
-    Disconnected,
-    PayInvoice {
+    ConnectedHandled,
+    DisconnectedHandled,
+    PayInvoiceHandled {
         success: bool,
         preimage: Option<String>,
         fees_sat: Option<u64>,
         error: Option<String>,
     },
-    ListTransactions,
-    GetBalance,
+    ListTransactionsHandled,
+    GetBalanceHandled,
 }
 
 #[derive(thiserror::Error, Debug)]
