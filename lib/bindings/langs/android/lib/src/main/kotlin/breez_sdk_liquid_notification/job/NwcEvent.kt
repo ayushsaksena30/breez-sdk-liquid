@@ -18,9 +18,6 @@ import breez_sdk_liquid_notification.Constants.DEFAULT_NWC_EVENT_NOTIFICATION_FA
 import breez_sdk_liquid_notification.Constants.NOTIFICATION_CHANNEL_DISMISSIBLE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -43,8 +40,6 @@ class NwcEventJob(
 
   private var request: NwcEventRequest? = null
   private var notified: Boolean = false
-  private var pollingJob: kotlinx.coroutines.Job? = null
-  private val pollingInterval: Long = 5000
 
   override fun start(liquidSDK: BindingLiquidSdk) {
     try {
@@ -52,39 +47,9 @@ class NwcEventJob(
       request = decoder.decodeFromString(NwcEventRequest.serializer(), payload)
       
       logger.log(TAG, "Starting SDK for NWC event with ID: ${request!!.eventId}", "INFO")
-      startPolling(liquidSDK)
     } catch (e: Exception) {
       logger.log(TAG, "Failed to decode NWC event payload: ${e.message}", "ERROR")
       fgService.onFinished(this)
-    }
-  }
-
-  private fun startPolling(liquidSDK: BindingLiquidSdk) {
-    pollingJob = scope.launch {
-      while (isActive) {
-        try {
-          if (request?.eventId == null) {
-            stopPolling(Exception("Missing event ID"))
-            return@launch
-          }
-
-          logger.log(TAG, "Polling for NWC event with ID: ${request!!.eventId}", "TRACE")
-          delay(pollingInterval)
-        } catch (e: Exception) {
-          stopPolling(e)
-          return@launch
-        }
-      }
-    }
-  }
-
-  private fun stopPolling(error: Exception? = null) {
-    pollingJob?.cancel()
-    pollingJob = null
-
-    error?.let {
-      logger.log(TAG, "Polling stopped with error: ${it.message}", "ERROR")
-      onShutdown()
     }
   }
 
@@ -97,7 +62,6 @@ class NwcEventJob(
         if (eventId == request?.eventId) {
           logger.log(TAG, "Received matching NWC event with ID: $eventId", "INFO")
           notifySuccess(nwcEvent)
-          stopPolling()
         }
       }
       else -> {

@@ -101,7 +101,7 @@ async fn main() -> Result<()> {
         .map(|var| var.into_string().expect("Expected valid API key string"));
     let mut config = LiquidSdk::default_config(network, breez_api_key)?;
     if args.enable_nwc {
-        config.nwc_options = Some(NWCOptions {
+        config.nwc_options = Some(NwcOptions {
             enabled: true,
             ..Default::default()
         })

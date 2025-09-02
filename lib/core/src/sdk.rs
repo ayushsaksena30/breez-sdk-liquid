@@ -55,7 +55,7 @@ use crate::error::SdkError;
 use crate::lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescription};
 use crate::model::PaymentState::*;
 use crate::model::Signer;
-use crate::nwc::{handler::BreezRelayMessageHandler, BreezNWCService, NWCService};
+use crate::nwc::{handler::SdkRelayMessageHandler, SdkNwcService, NwcService};
 use crate::payjoin::{side_swap::SideSwapPayjoinService, PayjoinService};
 use crate::receive_swap::ReceiveSwapHandler;
 use crate::send_swap::SendSwapHandler;
@@ -113,7 +113,7 @@ pub struct LiquidSdkBuilder {
     status_stream: Option<Arc<dyn SwapperStatusStream>>,
     swapper: Option<Arc<dyn Swapper>>,
     sync_service: Option<Arc<SyncService>>,
-    nwc_service: Option<Arc<dyn NWCService>>,
+    nwc_service: Option<Arc<dyn NwcService>>,
 }
 
 #[allow(dead_code)]
@@ -198,7 +198,7 @@ impl LiquidSdkBuilder {
         self
     }
 
-    pub fn nwc_service(&mut self, nwc_service: Arc<dyn NWCService>) -> &mut Self {
+    pub fn nwc_service(&mut self, nwc_service: Arc<dyn NwcService>) -> &mut Self {
         self.nwc_service = Some(nwc_service);
         self
     }
@@ -397,8 +397,8 @@ impl LiquidSdkBuilder {
             {
                 false => None,
                 true => {
-                    let nwc_service: Arc<dyn NWCService> = BreezNWCService::new(
-                        Box::new(BreezRelayMessageHandler::new(sdk.clone())),
+                    let nwc_service: Arc<dyn NwcService> = SdkNwcService::new(
+                        Box::new(SdkRelayMessageHandler::new(sdk.clone())),
                         sdk.config.clone(),
                         sdk.persister.clone(),
                         sdk.event_manager.clone(),
@@ -441,7 +441,7 @@ pub struct LiquidSdk {
     pub(crate) payjoin_service: Arc<dyn PayjoinService>,
     pub(crate) buy_bitcoin_service: Arc<dyn BuyBitcoinApi>,
     pub(crate) external_input_parsers: Vec<ExternalInputParser>,
-    pub(crate) nwc_service: OnceCell<Arc<dyn NWCService>>,
+    pub(crate) nwc_service: OnceCell<Arc<dyn NwcService>>,
     pub(crate) background_task_handles: Mutex<Vec<TaskHandle>>,
 }
 
@@ -5029,7 +5029,7 @@ impl LiquidSdk {
         crate::logger::init_logging(log_dir, app_logger)
     }
 
-    fn get_nwc_service(&self) -> SdkResult<Arc<dyn NWCService>> {
+    fn get_nwc_service(&self) -> SdkResult<Arc<dyn NwcService>> {
         match self.nwc_service.get() {
             Some(nwc_service) => Ok(nwc_service.clone()),
             None => Err(SdkError::Generic {

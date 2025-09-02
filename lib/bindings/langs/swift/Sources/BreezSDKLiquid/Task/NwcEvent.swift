@@ -8,15 +8,12 @@ struct NwcEventRequest: Decodable {
 class NwcEventTask : TaskProtocol {
   fileprivate let TAG = "NwcEventTask"
   
-  private let pollingInterval: TimeInterval = 5.0
-  
   private var request: NwcEventRequest?
   internal var payload: String
   internal var contentHandler: ((UNNotificationContent) -> Void)?
   internal var bestAttemptContent: UNMutableNotificationContent?
   internal var logger: ServiceLogger
   internal var notified: Bool = false
-  private var pollingTimer: Timer?
   
   init(payload: String, logger: ServiceLogger, contentHandler: ((UNNotificationContent) -> Void)? = nil, bestAttemptContent: UNMutableNotificationContent? = nil) {
     self.payload = payload
@@ -29,30 +26,10 @@ class NwcEventTask : TaskProtocol {
     do {
       self.request = try JSONDecoder().decode(NwcEventRequest.self, from: self.payload.data(using: .utf8)!)
       self.logger.log(tag: TAG, line: "Starting SDK for NWC event with ID: \(request.event_id)", level: "INFO")
-      startPolling(liquidSDK: liquidSDK)
     } catch let e {
       self.logger.log(tag: TAG, line: "failed to decode payload: \(e)", level: "ERROR")
       self.onShutdown()
       throw e
-    }
-  }
-  
-  private func startPolling(liquidSDK: BindingLiquidSdk) {
-    pollingTimer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] _ in
-      guard let self = self else { return }
-      self.logger.log(tag: TAG, line: "Polling for NWC event with ID: \(self.request?.event_id ?? "unknown")", level: "TRACE")
-    }
-    
-    pollingTimer?.fire()
-  }
-  
-  private func stopPolling(withError error: Error? = nil) {
-    pollingTimer?.invalidate()
-    pollingTimer = nil
-    
-    if let error = error {
-      logger.log(tag: TAG, line: "Polling stopped with error: \(error)", level: "ERROR")
-      onShutdown()
     }
   }
   
@@ -63,7 +40,6 @@ class NwcEventTask : TaskProtocol {
         if eventIdFromEvent == eventId {
           self.logger.log(tag: TAG, line: "Received matching NWC event with ID: \(eventId)", level: "INFO")
           self.notifySuccess(nwcEvent: nwcEvent)
-          self.stopPolling()
         }
         break
       default:

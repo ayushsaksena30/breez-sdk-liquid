@@ -332,7 +332,7 @@ interface BlockchainExplorer {
     Esplora(string url, boolean use_waterfalls);
 };
 
-dictionary NWCOptions {
+dictionary NwcOptions {
     boolean enabled;
     sequence<string>? relay_urls = null;
     string? secret_key = null;
@@ -353,7 +353,7 @@ dictionary Config {
     u64? onchain_fee_rate_leeway_sat = null;
     sequence<AssetMetadata>? asset_metadata = null;
     string? sideswap_api_key = null;
-    NWCOptions? nwc_options = null;
+    NwcOptions? nwc_options = null;
 };
 
 enum LiquidNetwork {

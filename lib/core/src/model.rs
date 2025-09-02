@@ -61,7 +61,7 @@ pub enum BlockchainExplorer {
 
 /// Configuration for the NWC service
 #[derive(Clone, Debug, Serialize, Default)]
-pub struct NWCOptions {
+pub struct NwcOptions {
     // Whether or not to enable the Nostr Wallet Connect service
     pub enabled: bool,
     /// A list of Nostr relay URLs for NWC connections. If None, default relays will be used.
@@ -115,8 +115,8 @@ pub struct Config {
     /// Set this to false to disable the use of Magic Routing Hints (MRH) to send payments. Enabled by default.
     pub use_magic_routing_hints: bool,
     /// The configuration options for the NWC service. If None, the service will be disabled.
-    /// For further information, see [NWCOptions]
-    pub nwc_options: Option<NWCOptions>,
+    /// For further information, see [NwcOptions]
+    pub nwc_options: Option<NwcOptions>,
 }
 
 impl Config {
