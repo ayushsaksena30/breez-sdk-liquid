@@ -57,6 +57,7 @@ use crate::model::PaymentState::*;
 use crate::model::Signer;
 use crate::nwc::{handler::SdkRelayMessageHandler, SdkNwcService, NwcService};
 use crate::payjoin::{side_swap::SideSwapPayjoinService, PayjoinService};
+use crate::plugin::Plugin;
 use crate::receive_swap::ReceiveSwapHandler;
 use crate::send_swap::SendSwapHandler;
 use crate::swapper::SubscriptionHandler;
@@ -119,7 +120,7 @@ pub struct LiquidSdkBuilder {
     status_stream: Option<Arc<dyn SwapperStatusStream>>,
     swapper: Option<Arc<dyn Swapper>>,
     sync_service: Option<Arc<SyncService>>,
-    nwc_service: Option<Arc<dyn NwcService>>,
+    plugins: Option<Vec<Box<dyn Plugin>>>,
 }
 
 #[allow(dead_code)]
@@ -128,6 +129,7 @@ impl LiquidSdkBuilder {
         config: Config,
         server_url: String,
         signer: Arc<Box<dyn Signer>>,
+        plugins: Option<Vec<Box<dyn Plugin>>>,
     ) -> Result<LiquidSdkBuilder> {
         let breez_server = Arc::new(BreezServer::new(server_url, None)?);
         Ok(LiquidSdkBuilder {
@@ -144,7 +146,7 @@ impl LiquidSdkBuilder {
             status_stream: None,
             swapper: None,
             sync_service: None,
-            nwc_service: None,
+            plugins,
         })
     }
 
@@ -216,7 +218,7 @@ impl LiquidSdkBuilder {
             .get_wallet_dir(&self.config.working_dir, &fingerprint_hex)
     }
 
-    pub async fn build(&self) -> Result<Arc<LiquidSdk>> {
+    pub async fn build(self) -> Result<Arc<LiquidSdk>> {
         if let Some(breez_api_key) = &self.config.breez_api_key {
             LiquidSdk::validate_breez_api_key(breez_api_key)?
         }
@@ -390,36 +392,8 @@ impl LiquidSdkBuilder {
             buy_bitcoin_service,
             external_input_parsers,
             background_task_handles: Mutex::new(vec![]),
-            nwc_service: OnceCell::new(),
+            plugins: self.plugins.unwrap_or_default(),
         });
-
-        let nwc_service = match self.nwc_service.clone() {
-            Some(nwc_service) => Some(nwc_service),
-            None => match self
-                .config
-                .nwc_options
-                .as_ref()
-                .is_some_and(|opt| opt.enabled)
-            {
-                false => None,
-                true => {
-                    let nwc_service: Arc<dyn NwcService> = SdkNwcService::new(
-                        Box::new(SdkRelayMessageHandler::new(sdk.clone())),
-                        sdk.config.clone(),
-                        sdk.persister.clone(),
-                        sdk.event_manager.clone(),
-                    )
-                    .await?;
-                    Some(nwc_service)
-                }
-            },
-        };
-        if let Some(nwc_service) = nwc_service {
-            sdk.nwc_service
-                .set(nwc_service)
-                .map_err(|e| anyhow!("Failed to set NWC Service: {e}"))?;
-        }
-
         Ok(sdk)
     }
 }
@@ -449,6 +423,7 @@ pub struct LiquidSdk {
     pub(crate) external_input_parsers: Vec<ExternalInputParser>,
     pub(crate) nwc_service: OnceCell<Arc<dyn NwcService>>,
     pub(crate) background_task_handles: Mutex<Vec<TaskHandle>>,
+    pub(crate) plugins: Vec<Box<dyn Plugin>>,
 }
 
 impl LiquidSdk {
@@ -462,12 +437,17 @@ impl LiquidSdk {
     ///     * `mnemonic` - the optional Liquid wallet mnemonic
     ///     * `passphrase` - the optional passphrase for the mnemonic
     ///     * `seed` - the optional Liquid wallet seed
-    pub async fn connect(req: ConnectRequest) -> Result<Arc<LiquidSdk>> {
+    /// * `plugins` - the [Plugin]s which should be loaded by the SDK at startup
+    pub async fn connect(
+        req: ConnectRequest,
+        plugins: Option<Vec<Box<dyn Plugin>>>,
+    ) -> Result<Arc<LiquidSdk>> {
         let signer = Self::default_signer(&req)?;
 
         Self::connect_with_signer(
             ConnectWithSignerRequest { config: req.config },
             Box::new(signer),
+            plugins,
         )
         .inspect_err(|e| error!("Failed to connect: {e:?}"))
         .await
@@ -489,6 +469,7 @@ impl LiquidSdk {
     pub async fn connect_with_signer(
         req: ConnectWithSignerRequest,
         signer: Box<dyn Signer>,
+        plugins: Option<Vec<Box<dyn Plugin>>>,
     ) -> Result<Arc<LiquidSdk>> {
         let start_ts = Instant::now();
 
@@ -499,6 +480,7 @@ impl LiquidSdk {
             req.config,
             PRODUCTION_BREEZSERVER_URL.into(),
             Arc::new(signer),
+            plugins,
         )?
         .build()
         .await?;
@@ -590,6 +572,9 @@ impl LiquidSdk {
                 handle,
             });
         }
+        for plugin in &self.plugins {
+            plugin.on_start(self.clone());
+        }
 
         Ok(())
     }
@@ -638,6 +623,13 @@ impl LiquidSdk {
                 handle.handle.abort();
             }
         }
+        for plugin in &self.plugins {
+            plugin.on_stop();
+        }
+
+        #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+        // Clear the database if we're on WASM
+        self.persister.clear_in_memory_db()?;
 
         *is_started = false;
         Ok(())

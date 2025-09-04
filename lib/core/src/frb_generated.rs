@@ -1996,6 +1996,7 @@ fn wire__crate__bindings__breez_log_stream_impl(
 fn wire__crate__bindings__connect_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     req: impl CstDecode<crate::model::ConnectRequest>,
+    plugins: impl CstDecode<Option<Vec<Arc<dyn Plugin>>>>,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::DcoCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
@@ -2005,10 +2006,11 @@ fn wire__crate__bindings__connect_impl(
         },
         move || {
             let api_req = req.cst_decode();
+            let api_plugins = plugins.cst_decode();
             move |context| async move {
                 transform_result_dco::<_, _, crate::error::SdkError>(
                     (move || async move {
-                        let output_ok = crate::bindings::connect(api_req).await?;
+                        let output_ok = crate::bindings::connect(api_req, api_plugins).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -2449,6 +2451,16 @@ impl SseDecode for flutter_rust_bridge::for_generated::anyhow::Error {
     }
 }
 
+impl SseDecode for Arc<dyn Plugin> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueNom<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<dyn Plugin>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
 impl SseDecode for BindingLiquidSdk {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2459,11 +2471,13 @@ impl SseDecode for BindingLiquidSdk {
     }
 }
 
-impl SseDecode for std::collections::HashMap<String, String> {
+impl SseDecode
+    for RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<dyn Plugin>>>
+{
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <Vec<(String, String)>>::sse_decode(deserializer);
-        return inner.into_iter().collect();
+        let mut inner = <usize>::sse_decode(deserializer);
+        return unsafe { decode_rust_opaque_nom(inner) };
     }
 }
 
@@ -3113,6 +3127,18 @@ impl SseDecode for crate::model::LiquidNetwork {
             2 => crate::model::LiquidNetwork::Regtest,
             _ => unreachable!("Invalid variant for LiquidNetwork: {}", inner),
         };
+    }
+}
+
+impl SseDecode for Vec<Arc<dyn Plugin>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<Arc<dyn Plugin>>::sse_decode(deserializer));
+        }
+        return ans_;
     }
 }
 
@@ -4125,11 +4151,11 @@ impl SseDecode for Option<u64> {
     }
 }
 
-impl SseDecode for Option<Vec<String>> {
+impl SseDecode for Option<Vec<Arc<dyn Plugin>>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<Vec<String>>::sse_decode(deserializer));
+            return Some(<Vec<Arc<dyn Plugin>>>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -5201,6 +5227,21 @@ fn pde_ffi_dispatcher_sync_impl(
 }
 
 // Section: rust2dart
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Arc<dyn Plugin>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, StdArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Arc<dyn Plugin>> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Arc<dyn Plugin>>> for Arc<dyn Plugin> {
+    fn into_into_dart(self) -> FrbWrapper<Arc<dyn Plugin>> {
+        self.into()
+    }
+}
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for FrbWrapper<BindingLiquidSdk> {
@@ -7828,6 +7869,13 @@ impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     }
 }
 
+impl SseEncode for Arc<dyn Plugin> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn Plugin >>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, StdArc<_>>(self), serializer);
+    }
+}
+
 impl SseEncode for BindingLiquidSdk {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -7835,10 +7883,14 @@ impl SseEncode for BindingLiquidSdk {
     }
 }
 
-impl SseEncode for std::collections::HashMap<String, String> {
+impl SseEncode
+    for RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<dyn Plugin>>>
+{
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<(String, String)>>::sse_encode(self.into_iter().collect(), serializer);
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
     }
 }
 
@@ -8325,6 +8377,16 @@ impl SseEncode for crate::model::LiquidNetwork {
             },
             serializer,
         );
+    }
+}
+
+impl SseEncode for Vec<Arc<dyn Plugin>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <Arc<dyn Plugin>>::sse_encode(item, serializer);
+        }
     }
 }
 
@@ -9138,12 +9200,12 @@ impl SseEncode for Option<u64> {
     }
 }
 
-impl SseEncode for Option<Vec<String>> {
+impl SseEncode for Option<Vec<Arc<dyn Plugin>>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
-            <Vec<String>>::sse_encode(value, serializer);
+            <Vec<Arc<dyn Plugin>>>::sse_encode(value, serializer);
         }
     }
 }
@@ -10016,6 +10078,18 @@ mod io {
             unimplemented!()
         }
     }
+    impl CstDecode<Arc<dyn Plugin>> for usize {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> Arc<dyn Plugin> {
+            flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(CstDecode::<
+                RustOpaqueNom<
+                    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<dyn Plugin>>,
+                >,
+            >::cst_decode(
+                self
+            ))
+        }
+    }
     impl CstDecode<BindingLiquidSdk> for usize {
         // Codec=Cst (C-struct based), see doc to use other codecs
         fn cst_decode(self) -> BindingLiquidSdk {
@@ -10028,13 +10102,17 @@ mod io {
             ))
         }
     }
-    impl CstDecode<std::collections::HashMap<String, String>>
-        for *mut wire_cst_list_record_string_string
+    impl
+        CstDecode<
+            RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<dyn Plugin>>>,
+        > for usize
     {
         // Codec=Cst (C-struct based), see doc to use other codecs
-        fn cst_decode(self) -> std::collections::HashMap<String, String> {
-            let vec: Vec<(String, String)> = self.cst_decode();
-            vec.into_iter().collect()
+        fn cst_decode(
+            self,
+        ) -> RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<dyn Plugin>>>
+        {
+            unsafe { decode_rust_opaque_nom(self as _) }
         }
     }
     impl
@@ -10945,6 +11023,16 @@ mod io {
             }
         }
     }
+    impl CstDecode<Vec<Arc < dyn Plugin >>> for *mut wire_cst_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin {
+            // Codec=Cst (C-struct based), see doc to use other codecs
+            fn cst_decode(self) -> Vec<Arc < dyn Plugin >> {
+                let vec = unsafe {
+        let wrap = flutter_rust_bridge::for_generated::box_from_leak_ptr(self);
+        flutter_rust_bridge::for_generated::vec_from_leak_ptr(wrap.ptr, wrap.len)
+    };
+    vec.into_iter().map(CstDecode::cst_decode).collect()
+            }
+        }
     impl CstDecode<Vec<String>> for *mut wire_cst_list_String {
         // Codec=Cst (C-struct based), see doc to use other codecs
         fn cst_decode(self) -> Vec<String> {
@@ -14083,8 +14171,9 @@ mod io {
     pub extern "C" fn frbgen_breez_liquid_wire__crate__bindings__connect(
         port_: i64,
         req: *mut wire_cst_connect_request,
+        plugins: *mut wire_cst_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin,
     ) {
-        wire__crate__bindings__connect_impl(port_, req)
+        wire__crate__bindings__connect_impl(port_, req, plugins)
     }
 
     #[unsafe(no_mangle)]
@@ -14100,6 +14189,24 @@ mod io {
         input: *mut wire_cst_list_prim_u_8_strict,
     ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
         wire__crate__bindings__parse_invoice_impl(input)
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_breez_liquid_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin(
+        ptr: *const std::ffi::c_void,
+    ) {
+        unsafe {
+            StdArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn Plugin >>>::increment_strong_count(ptr as _);
+        }
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_breez_liquid_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin(
+        ptr: *const std::ffi::c_void,
+    ) {
+        unsafe {
+            StdArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn Plugin >>>::decrement_strong_count(ptr as _);
+        }
     }
 
     #[unsafe(no_mangle)]
@@ -14551,6 +14658,12 @@ mod io {
         flutter_rust_bridge::for_generated::new_leak_box_ptr(
             wire_cst_url_success_action_data::new_with_null_ptr(),
         )
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_breez_liquid_cst_new_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin(len: i32) -> *mut wire_cst_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin{
+        let wrap = wire_cst_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin { ptr: flutter_rust_bridge::for_generated::new_leak_vec_ptr(Default::default(), len), len };
+        flutter_rust_bridge::for_generated::new_leak_box_ptr(wrap)
     }
 
     #[unsafe(no_mangle)]
@@ -15138,6 +15251,13 @@ mod io {
         amount_sat: *mut u64,
         label: *mut wire_cst_list_prim_u_8_strict,
         message: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynPlugin
+    {
+        ptr: *mut usize,
+        len: i32,
     }
     #[repr(C)]
     #[derive(Clone, Copy)]
