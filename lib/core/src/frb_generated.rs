@@ -3257,6 +3257,18 @@ impl SseDecode for Vec<String> {
     }
 }
 
+impl SseDecode for Option<Vec<String>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut is_some = <bool>::sse_decode(deserializer);
+        if is_some {
+            Some(<Vec<String>>::sse_decode(deserializer))
+        } else {
+            None
+        }
+    }
+}
+
 impl SseDecode for Vec<crate::model::AssetBalance> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
