@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::{
+    sdk::LiquidSdk,
     event::EventManager,
     model::{Config, Payment},
     persist::Persister,
@@ -70,7 +71,7 @@ pub trait NwcService: MaybeSend + MaybeSync {
     ///
     /// # Arguments
     /// * `shutdown_receiver` - Channel for receiving shutdown signals
-    fn start(self: Arc<Self>, shutdown_receiver: watch::Receiver<()>) -> JoinHandle<()>;
+    fn on_start(self: Arc<Self>, shutdown_receiver: watch::Receiver<()>) -> JoinHandle<()>;
 
     /// Stops the NWC service and performs cleanup.
     ///
@@ -78,34 +79,33 @@ pub trait NwcService: MaybeSend + MaybeSync {
     /// 1. Disconnecting from all Nostr relays
     /// 2. Aborting the background event processing task
     /// 3. Releasing any held resources
-    async fn stop(&self);
+    async fn on_stop(&self);
 }
 
-pub struct SdkNwcService<H: RelayMessageHandler> {
+pub struct SdkNwcService {
     keys: Keys,
     config: Config,
     client: NostrClient,
-    handler: Box<H>,
     event_manager: Arc<EventManager>,
     persister: std::sync::Arc<Persister>,
     resubscription_trigger: Mutex<Option<mpsc::Sender<()>>>,
 }
 
-impl<H: RelayMessageHandler> SdkNwcService<H> {
+impl SdkNwcService {
     /// Creates a new SdkNwcService instance.
     ///
-    /// Initializes the service with the provided cryptographic keys, handler,
+    /// Initializes the service with the provided cryptographic keys
     /// and connects to the specified Nostr relays.
     ///
     /// # Arguments
-    /// * `handler` - Handler for processing relay messages
-    /// * `relays` - List of relay URLs to connect to
+    /// * `config` - Configuration containing relay URLs
+    /// * `persister` - Persister for storing NWC data
+    /// * `event_manager` - Event manager for notifications
     ///
     /// # Returns
-    /// * `Sdkcwc>)` - Successfully initialized service
+    /// * `Arc<SdkNwcService>` - Successfully initialized service
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
     pub(crate) async fn new(
-        handler: Box<H>,
         config: Config,
         persister: std::sync::Arc<Persister>,
         event_manager: Arc<EventManager>,
@@ -121,7 +121,6 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         Ok(Arc::new(Self {
             client,
             config,
-            handler,
             keys,
             persister,
             event_manager,
@@ -194,7 +193,7 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         Ok(())
     }
 
-    async fn handle_event(&self, notification: &RelayPoolNotification) {
+    async fn handle_event(&self, notification: &RelayPoolNotification, handler: &dyn RelayMessageHandler) {
         let RelayPoolNotification::Event { event, .. } = notification else {
             return;
         };
@@ -239,16 +238,16 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
         };
 
         let (result, error) = match req.params {
-            RequestParams::PayInvoice(req) => match self.handler.pay_invoice(req).await {
+            RequestParams::PayInvoice(req) => match handler.pay_invoice(req).await {
                 Ok(res) => (Some(ResponseResult::PayInvoice(res)), None),
                 Err(e) => (None, Some(e)),
             },
-            RequestParams::ListTransactions(req) => match self.handler.list_transactions(req).await
+            RequestParams::ListTransactions(req) => match handler.list_transactions(req).await
             {
                 Ok(res) => (Some(ResponseResult::ListTransactions(res)), None),
                 Err(e) => (None, Some(e)),
             },
-            RequestParams::GetBalance => match self.handler.get_balance().await {
+            RequestParams::GetBalance => match handler.get_balance().await {
                 Ok(res) => (Some(ResponseResult::GetBalance(res)), None),
                 Err(e) => (None, Some(e)),
             },
@@ -441,7 +440,7 @@ impl<H: RelayMessageHandler> SdkNwcService<H> {
 }
 
 #[sdk_macros::async_trait]
-impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
+impl NwcService for SdkNwcService {
     async fn add_connection_string(&self, name: String) -> Result<String> {
         let random_secret_key = nostr_sdk::SecretKey::generate();
         let relays = self
@@ -466,7 +465,7 @@ impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
         Ok(())
     }
 
-    fn start(self: Arc<Self>, shutdown: watch::Receiver<()>) -> JoinHandle<()> {
+    fn on_start(self: Arc<Self>, shutdown: watch::Receiver<()>) -> JoinHandle<()> {
         let s = self.clone();
         let s_cleanup = self.clone();
         let mut sdk_event_listener = self.event_manager.subscribe();
@@ -518,7 +517,10 @@ impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
                 loop {
                     tokio::select! {
                         Ok(SdkEvent::PaymentSucceeded { details: payment }) = sdk_event_listener.recv() => s.forward_payment_to_clients(&payment, &clients).await,
-                        Ok(notification) = notifications_listener.recv() => s.handle_event(&notification).await,
+                        Ok(notification) = notifications_listener.recv() => {
+                            let handler = handler::SdkRelayMessageHandler::new(s.handler.clone());
+                            s.handle_event(&notification, &handler).await;
+                        },
                         Some(_) = resub_rx.recv() => {
                             info!("Resubscribing to notifications.");
                             break;
@@ -539,7 +541,7 @@ impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
                         event_id: "service_stop".to_string(),
                     }).await;
 
-                    match tokio::time::timeout(Duration::from_secs(2), self.stop()).await {
+                    match tokio::time::timeout(Duration::from_secs(2), self.on_stop()).await {
                         Ok(_) => {
                             info!("Successfully disconnected NWC client");
                         }
@@ -553,7 +555,7 @@ impl<H: RelayMessageHandler + 'static>NwcService for SdkNwcService<H> {
         })
     }
 
-    async fn stop(&self) {
+    async fn on_stop(&self) {
         self.client.disconnect().await;
         *self.resubscription_trigger.lock().await = None;
     }

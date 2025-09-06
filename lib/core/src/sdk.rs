@@ -120,6 +120,7 @@ pub struct LiquidSdkBuilder {
     status_stream: Option<Arc<dyn SwapperStatusStream>>,
     swapper: Option<Arc<dyn Swapper>>,
     sync_service: Option<Arc<SyncService>>,
+    nwc_service: Option<Arc<dyn NwcService>>,
     plugins: Option<Vec<Arc<dyn Plugin>>>,
 }
 
@@ -146,6 +147,7 @@ impl LiquidSdkBuilder {
             status_stream: None,
             swapper: None,
             sync_service: None,
+            nwc_service: None,
             plugins,
         })
     }
@@ -391,9 +393,18 @@ impl LiquidSdkBuilder {
             payjoin_service,
             buy_bitcoin_service,
             external_input_parsers,
+            nwc_service: OnceCell::new(),
             background_task_handles: Mutex::new(vec![]),
             plugins: self.plugins.unwrap_or_default(),
         });
+
+        // Set the nwc_service if it was provided
+        if let Some(nwc_service) = self.nwc_service {
+            sdk.nwc_service.set(nwc_service).map_err(|_| SdkError::Generic {
+                err: "Failed to set NWC service".to_string(),
+            })?;
+        }
+
         Ok(sdk)
     }
 }
@@ -554,7 +565,7 @@ impl LiquidSdk {
         if let Some(nwc_service) = self.nwc_service.get() {
             handles.push(TaskHandle {
                 name: "nwc-service".to_string(),
-                handle: nwc_service.clone().start(self.shutdown_receiver.clone()),
+                handle: nwc_service.clone().on_start(self.shutdown_receiver.clone()),
             });
         }
 
