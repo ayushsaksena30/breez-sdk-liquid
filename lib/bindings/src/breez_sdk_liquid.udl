@@ -783,10 +783,8 @@ callback interface BindingPlugin {
 namespace breez_sdk_liquid {
     [Throws=SdkError]
     BindingLiquidSdk connect(ConnectRequest req, sequence<BindingPlugin>? plugins);
-    BindingLiquidSdk connect(ConnectRequest req, sequence<BindingPlugin>? plugins);
 
     [Throws=SdkError]
-    BindingLiquidSdk connect_with_signer(ConnectWithSignerRequest req, Signer signer, sequence<BindingPlugin>? plugins);
     BindingLiquidSdk connect_with_signer(ConnectWithSignerRequest req, Signer signer, sequence<BindingPlugin>? plugins);
 
     [Throws=SdkError]

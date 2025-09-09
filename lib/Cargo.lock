@@ -916,6 +916,8 @@ dependencies = [
  "glob",
  "log",
  "once_cell",
+ "sdk-common",
+ "sdk-macros",
  "thiserror 1.0.69",
  "tokio",
  "uniffi 0.28.3",

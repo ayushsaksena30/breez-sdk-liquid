@@ -1,0 +1,23 @@
+[package]
+name = "nwc"
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+sdk-common = { workspace = true }
+sdk-macros = { workspace = true }
+nostr-sdk = { version = "0.43.0", features = ["nip44", "nip47"] }
+tokio = { version = "1", default-features = false, features = ["rt", "macros", "sync"] }
+tokio_with_wasm = { version = "0.8.2", features = ["macros", "rt", "sync", "time"] }
+futures = "0.3"
+url = "2"
+serde_json = "1.0"
+maybe_sync = "0.1"
+breez_sdk_liquid = { path = "../../core" }
+
+[lints]
+workspace = true

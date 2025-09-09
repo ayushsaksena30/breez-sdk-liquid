@@ -1,0 +1,6 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "lib/plugins/nwc/Cargo.toml",
+    "lib/core/Cargo.toml"
+  ]
+}
