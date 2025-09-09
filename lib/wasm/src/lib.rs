@@ -66,6 +66,7 @@ async fn connect_inner(
         config.clone(),
         PRODUCTION_BREEZSERVER_URL.to_string(),
         Rc::clone(&signer),
+        plugins,
     )?;
     if let Some(plugins) = plugins {
         sdk_builder.plugins(plugins);
@@ -403,5 +404,22 @@ impl BindingLiquidSdk {
     pub async fn disconnect(&self) -> WasmResult<()> {
         self.sdk.disconnect().await?;
         Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "addNwcUri")]
+    pub async fn add_nwc_uri(&self, name: String) -> WasmResult<String> {
+        Ok(self.sdk.add_nwc_uri(name).await?)
+    }
+
+    #[wasm_bindgen(js_name = "listNwcUris")]
+    pub async fn list_nwc_uris(&self) -> WasmResult<JsValue> {
+        Ok(serde_wasm_bindgen::to_value(
+            &self.sdk.list_nwc_uris().await?,
+        )?)
+    }
+
+    #[wasm_bindgen(js_name = "removeNwcUri")]
+    pub async fn remove_nwc_uri(&self, name: String) -> WasmResult<()> {
+        Ok(self.sdk.remove_nwc_uri(name).await?)
     }
 }

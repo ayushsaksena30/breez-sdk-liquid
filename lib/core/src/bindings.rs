@@ -1,6 +1,6 @@
 //! Dart / flutter bindings
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 pub use crate::plugin::Plugin;
 use anyhow::Result;
@@ -136,6 +136,18 @@ impl BindingLiquidSdk {
         req: ReceivePaymentRequest,
     ) -> Result<ReceivePaymentResponse, PaymentError> {
         self.sdk.receive_payment(&req).await
+    }
+
+    pub async fn add_nwc_uri(&self, name: String) -> Result<String, SdkError> {
+        self.sdk.add_nwc_uri(name).await
+    }
+
+    pub async fn list_nwc_uris(&self) -> Result<HashMap<String, String>, SdkError> {
+        self.sdk.list_nwc_uris().await
+    }
+
+    pub async fn remove_nwc_uri(&self, name: String) -> Result<(), SdkError> {
+        self.sdk.remove_nwc_uri(name).await
     }
 
     pub async fn create_bolt12_invoice(
