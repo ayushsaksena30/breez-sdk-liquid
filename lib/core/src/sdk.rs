@@ -43,7 +43,7 @@ use sdk_common::utils::Arc;
 use side_swap::api::SideSwapService;
 use signer::SdkSigner;
 use swapper::boltz::proxy::BoltzProxyFetcher;
-use tokio::sync::{watch, Mutex, OnceCell, RwLock};
+use tokio::sync::{watch, Mutex, RwLock};
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_with_wasm::alias as tokio;
 use web_time::{Instant, SystemTime, UNIX_EPOCH};
@@ -55,7 +55,6 @@ use crate::error::SdkError;
 use crate::lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescription};
 use crate::model::PaymentState::*;
 use crate::model::Signer;
-use crate::nwc::{handler::SdkRelayMessageHandler, SdkNwcService, NwcService};
 use crate::payjoin::{side_swap::SideSwapPayjoinService, PayjoinService};
 use crate::plugin::{Plugin, PluginStorage};
 use crate::receive_swap::ReceiveSwapHandler;
@@ -98,11 +97,6 @@ pub const DEFAULT_EXTERNAL_INPUT_PARSERS: &[(&str, &str, &str)] = &[
     ),
 ];
 
-/// Default Nostr relays used by the NWC service.
-pub const DEFAULT_NWC_RELAYS: &[&str] = &[
-    "wss://relay.damus.io",
-    "wss://nostr-pub.wellorder.net",
-];
 
 pub(crate) const NETWORK_PROPAGATION_GRACE_PERIOD: Duration = Duration::from_secs(120);
 
@@ -218,7 +212,6 @@ impl LiquidSdkBuilder {
             .get_wallet_dir(&self.config.working_dir, &fingerprint_hex)
     }
 
-    pub async fn build(self) -> Result<Arc<LiquidSdk>> {
     pub async fn build(self) -> Result<Arc<LiquidSdk>> {
         if let Some(breez_api_key) = &self.config.breez_api_key {
             LiquidSdk::validate_breez_api_key(breez_api_key)?
@@ -392,7 +385,6 @@ impl LiquidSdkBuilder {
             payjoin_service,
             buy_bitcoin_service,
             external_input_parsers,
-            nwc_service: OnceCell::new(),
             background_task_handles: Mutex::new(vec![]),
             plugins: self.plugins.unwrap_or_default(),
         });
@@ -423,9 +415,7 @@ pub struct LiquidSdk {
     pub(crate) payjoin_service: Arc<dyn PayjoinService>,
     pub(crate) buy_bitcoin_service: Arc<dyn BuyBitcoinApi>,
     pub(crate) external_input_parsers: Vec<ExternalInputParser>,
-    pub(crate) nwc_service: OnceCell<Arc<dyn NwcService>>,
     pub(crate) background_task_handles: Mutex<Vec<TaskHandle>>,
-    pub(crate) plugins: Vec<Arc<dyn Plugin>>,
     pub(crate) plugins: Vec<Arc<dyn Plugin>>,
 }
 
@@ -445,17 +435,11 @@ impl LiquidSdk {
         req: ConnectRequest,
         plugins: Option<Vec<Arc<dyn Plugin>>>,
     ) -> Result<Arc<LiquidSdk>> {
-    /// * `plugins` - the [Plugin]s which should be loaded by the SDK at startup
-    pub async fn connect(
-        req: ConnectRequest,
-        plugins: Option<Vec<Arc<dyn Plugin>>>,
-    ) -> Result<Arc<LiquidSdk>> {
         let signer = Self::default_signer(&req)?;
 
         Self::connect_with_signer(
             ConnectWithSignerRequest { config: req.config },
             Box::new(signer),
-            plugins,
             plugins,
         )
         .inspect_err(|e| error!("Failed to connect: {e:?}"))
@@ -479,7 +463,6 @@ impl LiquidSdk {
         req: ConnectWithSignerRequest,
         signer: Box<dyn Signer>,
         plugins: Option<Vec<Arc<dyn Plugin>>>,
-        plugins: Option<Vec<Arc<dyn Plugin>>>,
     ) -> Result<Arc<LiquidSdk>> {
         let start_ts = Instant::now();
 
@@ -490,6 +473,7 @@ impl LiquidSdk {
             req.config,
             PRODUCTION_BREEZSERVER_URL.into(),
             Arc::new(signer),
+            plugins.clone(),
         )?;
 
         if let Some(plugins) = plugins {
@@ -564,12 +548,6 @@ impl LiquidSdk {
                 handle: sync_service.start(self.shutdown_receiver.clone()),
             });
         }
-        if let Some(nwc_service) = self.nwc_service.get() {
-            handles.push(TaskHandle {
-                name: "nwc-service".to_string(),
-                handle: nwc_service.clone().on_start(self.shutdown_receiver.clone()),
-            });
-        }
 
         handles.push(TaskHandle {
             name: "track-new-blocks".to_string(),
@@ -595,7 +573,7 @@ impl LiquidSdk {
         }
 
         Ok(())
-    } //TODO: ADD NOSTR RELAY SERVICE (CALL self.nwcService.start(shutdown channel)), done.
+    }
 
     async fn ensure_is_started(&self) -> SdkResult<()> {
         let is_started = self.is_started.read().await;
@@ -5043,54 +5021,6 @@ impl LiquidSdk {
     #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     pub fn init_logging(log_dir: &str, app_logger: Option<Box<dyn log::Log>>) -> Result<()> {
         crate::logger::init_logging(log_dir, app_logger)
-    }
-
-    fn get_nwc_service(&self) -> SdkResult<Arc<dyn NwcService>> {
-        match self.nwc_service.get() {
-            Some(nwc_service) => Ok(nwc_service.clone()),
-            None => Err(SdkError::Generic {
-                err: "NWC service is not enabled. Set 'nwc_options.enabled' to true in the Config to use NWC functionality".to_string()
-            }),
-        }
-    }
-
-    /// Returns a new Nostr Wallet Connect (NWC) connection URI.
-    ///
-    /// ### Arguments
-    /// * `name` - The unique identifier for the connection string
-    ///
-    /// ### Errors
-    /// Error is thrown when:
-    /// - NWC service is not enabled in the configuration
-    /// - There's an error generating the connection string
-    pub async fn add_nwc_uri(&self, name: String) -> SdkResult<String> {
-        Ok(self.get_nwc_service()?.add_connection_string(name).await?)
-    }
-
-    /// Returns a list of the currently active Nostr Wallet Connect (NWC) connection URIs.
-    ///
-    /// ### Errors
-    /// Error is thrown when:
-    /// - NWC service is not enabled in the configuration
-    /// - There's an error retrieving the connection strings
-    pub async fn list_nwc_uris(&self) -> SdkResult<HashMap<String, String>> {
-        Ok(self.get_nwc_service()?.list_connection_strings().await?)
-    }
-
-    /// Removes an active Nostr Wallet Connect (NWC) URI.
-    ///
-    /// ### Arguments
-    /// * `name` - The unique identifier for the connection string
-    ///
-    /// ### Errors
-    /// Error is thrown when:
-    /// - NWC service is not enabled in the configuration
-    /// - The connection string was never set
-    pub async fn remove_nwc_uri(&self, name: String) -> SdkResult<()> {
-        Ok(self
-            .get_nwc_service()?
-            .remove_connection_string(name)
-            .await?)
     }
 }
 

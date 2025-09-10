@@ -1,8 +1,8 @@
-use crate::model::{
+use breez_sdk_liquid::model::{
     ListPaymentsRequest, PayAmount, Payment, PaymentDetails, PaymentState, PaymentType,
     PrepareSendRequest, SendPaymentRequest,
 };
-use crate::sdk::LiquidSdk;
+use breez_sdk_liquid::sdk::LiquidSdk;
 use log::info;
 use maybe_sync::{MaybeSend, MaybeSync};
 use nostr_sdk::nips::nip47::{
@@ -221,7 +221,6 @@ impl RelayMessageHandler for SdkRelayMessageHandler {
         })
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -368,3 +367,4 @@ mod tests {
         }
     }
 }
+

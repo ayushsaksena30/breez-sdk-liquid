@@ -20,7 +20,7 @@ opt-level = "z"   # Optimize for size.
 lto = true
 
 [workspace]
-members = ["bindings", "bindings/langs/react-native", "core", "wasm"]
+members = ["bindings", "bindings/langs/react-native", "core", "plugins/nwc", "wasm"]
 resolver = "2"
 
 [workspace.package]

@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{
+use breez_sdk_liquid::{
     sdk::LiquidSdk,
     event::EventManager,
     model::{Config, Payment},
@@ -12,7 +12,7 @@ use crate::{
     utils,
 };
 use anyhow::Result;
-use handler::RelayMessageHandler;
+use crate::handler::RelayMessageHandler;
 use log::{info, warn, debug};
 use maybe_sync::{MaybeSend, MaybeSync};
 use nostr_sdk::{
@@ -30,10 +30,7 @@ use tokio::sync::{mpsc, watch, Mutex};
 use tokio::task::JoinHandle;
 use tokio_with_wasm::alias as tokio;
 
-use crate::model::{NwcEvent, SdkEvent};
-
-pub(crate) mod handler;
-mod persist;
+use breez_sdk_liquid::model::{NwcEvent, SdkEvent};
 
 #[sdk_macros::async_trait]
 pub trait NwcService: MaybeSend + MaybeSync {
@@ -350,7 +347,7 @@ impl SdkNwcService {
         clients: &HashMap<String, NostrWalletConnectURI>,
     ) {
         let (invoice, description, preimage, payment_hash) = match &payment.details {
-            crate::model::PaymentDetails::Lightning {
+            breez_sdk_liquid::model::PaymentDetails::Lightning {
                 invoice,
                 description,
                 preimage,
@@ -386,7 +383,7 @@ impl SdkNwcService {
             metadata: None,
         };
 
-        let notification = if payment.payment_type == crate::model::PaymentType::Send {
+        let notification = if payment.payment_type == breez_sdk_liquid::model::PaymentType::Send {
             Notification {
                 notification_type: NotificationType::PaymentSent,
                 notification: NotificationResult::PaymentSent(payment_notification),
@@ -518,7 +515,7 @@ impl NwcService for SdkNwcService {
                     tokio::select! {
                         Ok(SdkEvent::PaymentSucceeded { details: payment }) = sdk_event_listener.recv() => s.forward_payment_to_clients(&payment, &clients).await,
                         Ok(notification) = notifications_listener.recv() => {
-                            let handler = handler::SdkRelayMessageHandler::new(s.handler.clone());
+                            let handler = crate::handler::SdkRelayMessageHandler::new(sdk.clone());
                             s.handle_event(&notification, &handler).await;
                         },
                         Some(_) = resub_rx.recv() => {

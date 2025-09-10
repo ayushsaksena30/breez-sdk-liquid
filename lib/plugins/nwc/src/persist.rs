@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::persist::Persister;
+use breez_sdk_liquid::persist::Persister;
 use anyhow::Result;
 
 const KEY_NWC_URIS: &str = "nwc_uris";

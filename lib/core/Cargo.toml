@@ -66,8 +66,6 @@ esplora-client = { git = "https://github.com/breez/rust-esplora-client", branch 
 ] }
 sideswap_api = { git = "https://github.com/breez/sideswap_rust", rev = "2c3c4312d8fe" }
 
-nostr-sdk = { version = "0.43.0", features = ["nip44", "nip47"] }
-
 # Non-Wasm dependencies
 [target.'cfg(not(all(target_family = "wasm", target_os = "unknown")))'.dependencies]
 electrum-client = { version = "0.21.0", default-features = false, features = [

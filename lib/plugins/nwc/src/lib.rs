@@ -1,3 +1,4 @@
+pub mod config;
 pub mod handler;
 mod persist;
 mod relay;
@@ -13,12 +14,12 @@ use std::{
 use breez_sdk_liquid::{
     sdk::LiquidSdk,
     event::EventManager,
-    model::{Config, Payment},
+    model::Payment,
     persist::Persister,
-    utils,
-    plugin::Plugin,
+    plugin::{Plugin, PluginStorage},
 };
 use anyhow::Result;
+use config::NwcConfig;
 use handler::RelayMessageHandler;
 use log::{info, warn, debug};
 use maybe_sync::{MaybeSend, MaybeSync};
@@ -33,7 +34,7 @@ use nostr_sdk::{
     RelayUrl, SingleLetterTag, Tag, Timestamp,
 };
 use sdk_common::utils::Arc;
-use tokio::sync::{mpsc, watch, Mutex};
+use tokio::sync::{mpsc, watch, Mutex, OnceCell};
 use tokio_with_wasm::alias as tokio;
 
 use breez_sdk_liquid::model::{NwcEvent, SdkEvent};
@@ -64,12 +65,12 @@ pub trait NwcService: MaybeSend + MaybeSync {
 
 pub struct SdkNwcService {
     keys: Keys,
-    config: Config,
+    config: NwcConfig,
     client: NostrClient,
     event_manager: Arc<EventManager>,
     persister: std::sync::Arc<Persister>,
     resubscription_trigger: Mutex<Option<mpsc::Sender<()>>>,
-    shutdown_receiver: Arc<Mutex<Option<watch::Receiver<()>>>>,
+    task_handle: OnceCell<tokio::task::JoinHandle<()>>,
 }
 
 impl SdkNwcService {
@@ -79,7 +80,7 @@ impl SdkNwcService {
     /// and connects to the specified Nostr relays.
     ///
     /// # Arguments
-    /// * `config` - Configuration containing relay URLs
+    /// * `config` - NWC configuration containing relay URLs and secret key
     /// * `persister` - Persister for storing NWC data
     /// * `event_manager` - Event manager for notifications
     ///
@@ -87,12 +88,12 @@ impl SdkNwcService {
     /// * `Arc<SdkNwcService>` - Successfully initialized service
     /// * `Err(anyhow::Error)` - Error adding relays or initializing
     pub(crate) async fn new(
-        config: Config,
+        config: NwcConfig,
         persister: std::sync::Arc<Persister>,
         event_manager: Arc<EventManager>,
     ) -> Result<Arc<Self>> {
         let client = NostrClient::default();
-        let relays = config.nwc_relays();
+        let relays = config.relays();
         for relay in &relays {
             client.add_relay(relay).await?;
         }
@@ -106,17 +107,13 @@ impl SdkNwcService {
             persister,
             event_manager,
             resubscription_trigger: Default::default(),
-            shutdown_receiver: Arc::new(Mutex::new(None)),
+            task_handle: OnceCell::new(),
         }))
     }
 
-    fn get_or_create_secret_key(config: &Config, persister: &Persister) -> Result<String> {
+    fn get_or_create_secret_key(config: &NwcConfig, persister: &Persister) -> Result<String> {
         // If we have a key from the configuration, use it
-        if let Some(key) = config
-            .nwc_options
-            .as_ref()
-            .and_then(|opts| opts.secret_key.clone())
-        {
+        if let Some(key) = config.secret_key.clone() {
             return Ok(key);
         }
 
@@ -420,9 +417,6 @@ impl SdkNwcService {
         }
     }
 
-    pub fn set_shutdown_receiver(&self, shutdown_receiver: watch::Receiver<()>) {
-        *self.shutdown_receiver.lock().blocking_lock() = Some(shutdown_receiver);
-    }
 }
 
 #[sdk_macros::async_trait]
@@ -431,7 +425,7 @@ impl NwcService for SdkNwcService {
         let random_secret_key = nostr_sdk::SecretKey::generate();
         let relays = self
             .config
-            .nwc_relays()
+            .relays()
             .into_iter()
             .filter_map(|r| RelayUrl::from_str(&r).ok())
             .collect();
@@ -453,19 +447,14 @@ impl NwcService for SdkNwcService {
 }
 
 impl Plugin for SdkNwcService {
-    fn on_start(&self, sdk: Arc<LiquidSdk>) {
+    fn id(&self) -> String {
+        "nwc".to_string()
+    }
+
+    async fn on_start(&self, sdk: Arc<LiquidSdk>, storage: PluginStorage) {
         let s = Arc::new(self.clone());
         let s_cleanup = s.clone();
         let mut sdk_event_listener = self.event_manager.subscribe();
-        
-        // Get shutdown receiver from the SDK or create one
-        let shutdown_receiver = self.shutdown_receiver.lock().blocking_lock().clone()
-            .unwrap_or_else(|| {
-                let (tx, rx) = watch::channel(());
-                // Store the receiver for later use
-                *self.shutdown_receiver.lock().blocking_lock() = Some(rx.clone());
-                rx
-            });
 
         let nwc_service_future = async move {
             s.client.connect().await;
@@ -528,25 +517,22 @@ impl Plugin for SdkNwcService {
             }
         };
 
-        tokio::task::spawn(async move {
-            utils::run_with_shutdown_and_cleanup(
-                shutdown_receiver,
-                "Received shutdown signal, exiting NWC service loop",
-                nwc_service_future,
-                || async move {
-                    let _ = s_cleanup.event_manager.notify(SdkEvent::NWC {
-                        details: NwcEvent::DisconnectedHandled,
-                        event_id: "service_stop".to_string(),
-                    }).await;
-
-                    s_cleanup.client.disconnect().await;
-                },
-            )
-            .await
-        });
+        let handle = tokio::task::spawn(nwc_service_future);
+        if self.task_handle.set(handle).is_err() {
+            warn!("NWC service task_handle already set; not overriding");
+        }
     }
 
-    fn on_stop(&self) {
-        *self.resubscription_trigger.lock().blocking_lock() = None;
+    async fn on_stop(&self) {
+        *self.resubscription_trigger.lock().await = None;
+        if let Some(handle) = self.task_handle.get() {
+            handle.abort();
+        }
+        let _ = self.event_manager.notify(SdkEvent::NWC {
+            details: NwcEvent::DisconnectedHandled,
+            event_id: "service_stop".to_string(),
+        }).await;
+
+        self.client.disconnect().await;
     }
 }
