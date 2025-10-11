@@ -74,7 +74,11 @@ pub trait NwcService: MaybeSend + MaybeSync {
 }
 
 pub struct NwcConfig {
+    /// The passphrase with which to encrypt the connection string and secret keys
+    pub passphrase: Option<String>,
+    /// Custom relays urls to be used
     pub relay_urls: Option<Vec<String>>,
+    /// Custom Nostr secret key for the wallet node, hex-encoded
     pub secret_key_hex: Option<String>,
 }
 
@@ -118,7 +122,7 @@ impl SdkNwcService {
         storage: PluginStorage,
         resub_tx: mpsc::Sender<()>,
     ) -> Result<RuntimeContext> {
-        let persister = Persister::new(storage);
+        let persister = Persister::new(storage, self.config.passphrase.clone());
         let client = NostrClient::default();
         for relay in self.config.relays() {
             if let Err(err) = client.add_relay(&relay).await {

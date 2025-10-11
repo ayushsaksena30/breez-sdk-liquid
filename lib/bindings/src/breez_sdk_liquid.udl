@@ -948,6 +948,7 @@ enum NwcError {
 dictionary NwcConfig {
   sequence<string>? relay_urls;
   string? secret_key_hex;
+  string? passphrase;
 };
 
 [Enum]

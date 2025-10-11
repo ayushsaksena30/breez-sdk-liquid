@@ -117,9 +117,12 @@ async fn main() -> Result<()> {
     }
     let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
     if args.nwc {
+        let passphrase = std::env::var_os("NWC_PASSPHRASE")
+            .map(|var| var.into_string().expect("Invalid NWC passphrase"));
         let nwc_service = Arc::new(SdkNwcService::new(NwcConfig {
             relay_urls: None,
             secret_key_hex: None,
+            passphrase,
         }));
         NWC_SERVICE.set(nwc_service.clone()).unwrap_or_else(|_| {
             panic!("Could not set NWC service");
