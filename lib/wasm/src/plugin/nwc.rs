@@ -57,6 +57,14 @@ mod model {
 }
 pub use model::*;
 
+#[derive(Clone)]
+#[sdk_macros::extern_wasm_bindgen(breez_sdk_liquid_nwc::NwcConfig)]
+pub struct NwcConfig {
+    pub passphrase: Option<String>,
+    pub relay_urls: Option<Vec<String>>,
+    pub secret_key_hex: Option<String>,
+}
+
 #[wasm_bindgen]
 pub struct BindingNwcService {
     inner: Rc<SdkNwcService>,
@@ -64,6 +72,12 @@ pub struct BindingNwcService {
 
 #[wasm_bindgen]
 impl BindingNwcService {
+    #[wasm_bindgen(constructor)]
+    pub fn new(config: NwcConfig) -> Self {
+        let inner = Rc::new(SdkNwcService::new(config.into()));
+        Self { inner }
+    }
+
     // NWC
     #[wasm_bindgen(js_name = "addConnectionString")]
     pub async fn add_connection_string(&self, name: String) -> WasmResult<String> {

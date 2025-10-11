@@ -815,9 +815,12 @@ dependencies = [
 name = "breez-sdk-liquid-nwc"
 version = "0.0.1"
 dependencies = [
+ "aes",
+ "aes-gcm",
  "anyhow",
  "async-trait",
  "breez-sdk-liquid",
+ "hex",
  "log",
  "maybe-sync",
  "nostr-sdk",
@@ -826,6 +829,7 @@ dependencies = [
  "sdk-macros",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 1.0.69",
  "tokio",
  "tokio_with_wasm",
