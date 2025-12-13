@@ -5,7 +5,7 @@ open class SDKNotificationService: UNNotificationServiceExtension {
     fileprivate let TAG = "SDKNotificationService"
     
     var liquidSDK: BindingLiquidSdk?
-    var plugins: SDKPlugins = SDKPlugins()
+    var pluginManager: PluginManager = PluginManager()
     var contentHandler: ((UNNotificationContent) -> Void)?
     var bestAttemptContent: UNMutableNotificationContent?
     var currentTask: TaskProtocol?
@@ -35,12 +35,8 @@ open class SDKNotificationService: UNNotificationServiceExtension {
                 do {
                     logger.log(tag: TAG, line: "Breez Liquid SDK is not connected, connecting...", level: "INFO")
                     liquidSDK = try BreezSDKLiquidConnector.register(connectRequest: connectRequest, listener: currentTask)
-                    let pluginConfigs = getPluginConfigs()
-                    if let nwcConfig = pluginConfigs?.nwc {
-                        plugins.nwc = try NwcPlugin.register(sdk: liquidSDK!, config: nwcConfig, listener: currentTask)
-                    }
                     logger.log(tag: TAG, line: "Breez Liquid SDK connected successfully", level: "INFO")
-                    try currentTask.start(liquidSDK: liquidSDK!, plugins: plugins)
+                    try currentTask.start(liquidSDK: liquidSDK!, pluginConfigs: getPluginConfigs())
                 } catch {
                     logger.log(tag: TAG, line: "Breez Liquid SDK connection failed \(error)", level: "ERROR")
                     shutdown()
@@ -53,8 +49,8 @@ open class SDKNotificationService: UNNotificationServiceExtension {
         return nil
     }
 
-    open func getPluginConfigs() -> PluginConfigs? {
-        return nil
+    open func getPluginConfigs() -> PluginConfigs {
+        return PluginConfigs(nwc: nil)
     }
         
     open func getTaskFromNotification() -> TaskProtocol? {
@@ -98,10 +94,10 @@ open class SDKNotificationService: UNNotificationServiceExtension {
     }
     
     private func shutdown() -> Void {
+        PluginManager.shutdown()
         self.logger.log(tag: TAG, line: "shutting down...", level: "INFO")
         BreezSDKLiquidConnector.unregister()
         self.logger.log(tag: TAG, line: "task unregistered", level: "INFO")
-        plugins.stop()
         self.currentTask?.onShutdown()
     }
     
